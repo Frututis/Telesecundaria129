@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Dirección - Supervisión</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 font-sans">
+
+    <nav class="bg-gray-900 text-white p-4 shadow-lg flex justify-between items-center">
+        <div class="flex items-center gap-2">
+            <span class="text-xl">🎓</span>
+            <span class="font-bold text-lg">Panel de Dirección</span>
+        </div>
+        <div>
+            <span class="mr-4 text-gray-300">Bienvenido, Director</span>
+            <a href="/logout" class="bg-red-600 hover:bg-red-700 px-4 py-2 rounded text-sm transition">Cerrar Sesión</a>
+        </div>
+    </nav>
+
+    <div class="container mx-auto p-8">
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <div class="bg-white p-6 rounded-lg shadow border-l-4 border-green-500">
+                <h3 class="text-gray-500 text-sm uppercase font-bold">Planeaciones Recibidas</h3>
+                <p class="text-3xl font-bold text-gray-800">{{ planeaciones|length }}</p>
+            </div>
+            </div>
+
+        <div class="bg-white rounded-lg shadow-lg overflow-hidden">
+            <div class="bg-gray-800 text-white p-4 flex justify-between items-center">
+                <h3 class="font-bold text-lg">📥 Buzón de Planeaciones (Todos los Maestros)</h3>
+            </div>
+            
+            <table class="w-full text-left border-collapse">
+                <thead>
+                    <tr class="bg-gray-100 border-b text-gray-600 text-sm uppercase">
+                        <th class="p-4 font-bold">Maestro</th> <th class="p-4 font-bold">Archivo</th>
+                        <th class="p-4 font-bold">Comentarios</th>
+                        <th class="p-4 font-bold">Fecha Entrega</th>
+                        <th class="p-4 font-bold">Revisión</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for plan in planeaciones %}
+                    <tr class="border-b hover:bg-gray-50 transition">
+                        <td class="p-4">
+                            <span class="font-bold text-blue-900 bg-blue-100 px-2 py-1 rounded text-xs uppercase">
+                                {{ plan.nombre_completo }}
+                            </span>
+                        </td>
+                        <td class="p-4 text-gray-800 font-medium">
+                            {{ plan.nombre_archivo }}
+                        </td>
+                        <td class="p-4 text-gray-600 italic">{{ plan.comentarios }}</td>
+                        <td class="p-4 text-gray-500 text-sm">{{ plan.fecha_subida }}</td>
+                        <td class="p-4">
+                            <a href="/archivos/{{ plan.ruta_archivo }}" target="_blank" 
+                               class="bg-green-100 text-green-700 hover:bg-green-200 px-3 py-1 rounded font-bold text-xs uppercase tracking-wide transition">
+                                👁️ Revisar PDF
+                            </a>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="5" class="p-8 text-center text-gray-500">
+                            No hay documentos para revisar.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+    </div>
+</body>
+</html>

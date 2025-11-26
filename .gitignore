@@ -1,0 +1,14 @@
+# Archivos compilados de Python (Basura)
+__pycache__/
+*.pyc
+
+# Carpeta de archivos subidos (No la queremos en la nube, es local)
+uploads/
+
+# Entornos virtuales (Si usas alguno)
+venv/
+env/
+
+# Archivos de sistema de Windows/Mac
+.DS_Store
+Thumbs.db

@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Acceso SIGET</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 h-screen flex items-center justify-center">
+
+    <div class="bg-white p-8 rounded-lg shadow-lg w-96">
+        <div class="text-center mb-6">
+            <h1 class="text-2xl font-bold text-blue-900">Telesecundaria</h1>
+            <p class="text-gray-500 text-sm">Sistema Integral de Gestión</p>
+        </div>
+
+        <form action="/login" method="post">
+            <div class="mb-4">
+                <label class="block text-gray-700 text-sm font-bold mb-2">Usuario</label>
+                <input name="username" type="text" placeholder="Ej. admin" 
+                       class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:border-blue-500" required>
+            </div>
+            
+            <div class="mb-6">
+                <label class="block text-gray-700 text-sm font-bold mb-2">Contraseña</label>
+                <input name="password" type="password" placeholder="******" 
+                       class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:border-blue-500" required>
+            </div>
+
+            {% if error %}
+            <div class="mb-4 text-red-500 text-sm text-center">
+                {{ error }}
+            </div>
+            {% endif %}
+
+            <button type="submit" 
+                    class="w-full bg-blue-600 text-white font-bold py-2 px-4 rounded hover:bg-blue-700 transition duration-200">
+                Ingresar
+            </button>
+        </form>
+    </div>
+
+</body>
+</html>

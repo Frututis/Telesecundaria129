@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Panel Docente - SIGET</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 font-sans">
+
+    <nav class="bg-blue-800 text-white p-4 shadow-lg flex justify-between items-center">
+        <div class="flex items-center gap-2">
+            <span class="text-xl">👨‍🏫</span>
+            <span class="font-bold text-lg">Portal Docente</span>
+        </div>
+        <div>
+            <span class="mr-4 text-blue-200">Hola, {{ usuario }}</span>
+            <a href="/logout" class="bg-blue-700 hover:bg-blue-600 px-4 py-2 rounded text-sm transition">Cerrar Sesión</a>
+        </div>
+    </nav>
+
+    <div class="container mx-auto p-8 max-w-5xl">
+
+        <h1 class="text-3xl font-bold text-gray-800 mb-8">Gestión de Planeaciones</h1>
+
+        <div class="bg-white p-8 rounded-xl shadow-md mb-10 border-t-4 border-blue-500">
+            <h2 class="text-xl font-bold mb-4 text-gray-700 flex items-center gap-2">
+                📤 Subir Nueva Planeación
+            </h2>
+            <p class="text-gray-500 mb-4 text-sm">Sube tus archivos en formato PDF o Word. Asegúrate de nombrar bien la semana.</p>
+            
+            <form action="/subir-planeacion" method="post" enctype="multipart/form-data" class="flex flex-col md:flex-row gap-4 items-end">
+                <div class="flex-1 w-full">
+                    <label class="block text-sm font-bold text-gray-700 mb-1">Archivo</label>
+                    <input type="file" name="archivo" required 
+                           class="w-full border border-gray-300 p-2 rounded bg-gray-50 focus:outline-none focus:border-blue-500 transition">
+                </div>
+                <div class="flex-1 w-full">
+                    <label class="block text-sm font-bold text-gray-700 mb-1">Descripción / Semana</label>
+                    <input type="text" name="comentarios" placeholder="Ej. Bloque 2 - Semana 4 - Historia" required
+                           class="w-full border border-gray-300 p-2 rounded focus:outline-none focus:border-blue-500 transition">
+                </div>
+                <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 px-6 rounded shadow transition duration-200">
+                    Enviar Archivo
+                </button>
+            </form>
+        </div>
+
+        <div class="bg-white rounded-xl shadow-md overflow-hidden">
+            <div class="bg-gray-100 p-4 border-b">
+                <h3 class="font-bold text-gray-700">📚 Mis Archivos Subidos</h3>
+            </div>
+            
+            <table class="w-full text-left border-collapse">
+                <thead>
+                    <tr class="text-sm text-gray-500 uppercase bg-gray-50">
+                        <th class="p-4 font-semibold">Archivo</th>
+                        <th class="p-4 font-semibold">Comentarios</th>
+                        <th class="p-4 font-semibold">Fecha de Subida</th>
+                        <th class="p-4 font-semibold">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for plan in planeaciones %}
+                    <tr class="border-b hover:bg-blue-50 transition">
+                        <td class="p-4 font-medium text-gray-800 flex items-center gap-2">
+                            📄 {{ plan.nombre_archivo }}
+                        </td>
+                        <td class="p-4 text-gray-600">{{ plan.comentarios }}</td>
+                        <td class="p-4 text-gray-500 text-sm">{{ plan.fecha_subida }}</td>
+                        <td class="p-4">
+                            <a href="/archivos/{{ plan.ruta_archivo }}" target="_blank" 
+                               class="text-blue-600 hover:text-blue-900 font-bold text-sm bg-blue-50 px-3 py-1 rounded hover:bg-blue-100 transition">
+                                Ver Documento
+                            </a>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="4" class="p-10 text-center text-gray-400">
+                            Aún no has subido ninguna planeación.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+    </div>
+</body>
+</html>
