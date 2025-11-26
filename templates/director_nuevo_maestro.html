@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Alta de Personal Docente</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+</head>
+<body class="bg-gray-100 font-sans">
+
+    <nav class="bg-gray-900 text-white p-4 shadow-lg flex justify-between items-center sticky top-0 z-50">
+        <div class="flex items-center gap-2">
+            <span class="material-icons text-green-400">person_add</span>
+            <span class="font-bold text-lg">Registro de Personal</span>
+        </div>
+        <a href="/dashboard" class="text-sm bg-gray-700 hover:bg-gray-600 px-3 py-1 rounded transition">
+            &larr; Volver al Dashboard
+        </a>
+    </nav>
+
+    <div class="container mx-auto p-8 flex justify-center">
+        
+        <div class="bg-white p-8 rounded-xl shadow-xl w-full max-w-lg border-t-4 border-green-500">
+            
+            <h1 class="text-2xl font-bold text-gray-800 mb-2">Nuevo Maestro</h1>
+            <p class="text-gray-500 mb-6 text-sm">Ingrese los datos para generar las credenciales de acceso al sistema.</p>
+
+            {% if error %}
+            <div class="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6 rounded shadow-sm flex items-center gap-2">
+                <span class="material-icons text-red-500">error</span>
+                <p>{{ error }}</p>
+            </div>
+            {% endif %}
+
+            {% if mensaje %}
+            <div class="bg-green-100 border-l-4 border-green-500 text-green-700 p-4 mb-6 rounded shadow-sm flex items-center gap-2">
+                <span class="material-icons text-green-600">check_circle</span>
+                <div>
+                    <p class="font-bold">¡Registro Exitoso!</p>
+                    <p class="text-sm">{{ mensaje }}</p>
+                </div>
+            </div>
+            {% endif %}
+
+            <form action="/director/crear-maestro" method="post" autocomplete="off">
+                
+                <div class="mb-5">
+                    <label class="block text-gray-700 text-sm font-bold mb-2">Nombre Completo (con Título)</label>
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400">
+                            <span class="material-icons text-sm">badge</span>
+                        </span>
+                        <input name="nombre" type="text" placeholder="Ej. Mtro. Juan Pérez López" required
+                               class="w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500 transition">
+                    </div>
+                </div>
+
+                <div class="mb-5">
+                    <label class="block text-gray-700 text-sm font-bold mb-2">Nombre de Usuario (Login)</label>
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400">
+                            <span class="material-icons text-sm">account_circle</span>
+                        </span>
+                        <input name="usuario" type="text" placeholder="Ej. jperez" required
+                               class="w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500 transition">
+                    </div>
+                    <p class="text-xs text-gray-400 mt-1">Este será el ID para iniciar sesión.</p>
+                </div>
+
+                <div class="mb-8">
+                    <label class="block text-gray-700 text-sm font-bold mb-2">Contraseña Inicial</label>
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400">
+                            <span class="material-icons text-sm">lock</span>
+                        </span>
+                        <input name="password" type="text" placeholder="Ej. temporal123" required
+                               class="w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500 transition">
+                    </div>
+                </div>
+
+                <div class="flex gap-4">
+                    <a href="/director/asignacion" class="w-1/2 bg-gray-200 text-gray-700 font-bold py-3 rounded-lg hover:bg-gray-300 text-center transition">
+                        Cancelar
+                    </a>
+                    <button type="submit" class="w-1/2 bg-green-600 text-white font-bold py-3 rounded-lg hover:bg-green-700 shadow-md hover:shadow-lg transition transform hover:-translate-y-1">
+                        Registrar
+                    </button>
+                </div>
+
+            </form>
+        </div>
+    </div>
+
+</body>
+</html>

@@ -351,3 +351,71 @@ async def guardar_asignacion(request: Request):
         cursor.close()
         conn.close()
     return RedirectResponse(url="/director/asignacion", status_code=303)
+
+# ==========================================
+# 8. MÓDULO DE ALTA DE DOCENTES (NUEVO)
+# ==========================================
+
+# 1. VISTA: FORMULARIO DE REGISTRO
+@app.get("/director/nuevo-maestro", response_class=HTMLResponse)
+async def form_nuevo_maestro(request: Request):
+    usuario = request.cookies.get("usuario_logueado")
+    rol = request.cookies.get("rol_usuario")
+    
+    # Seguridad: Solo Director
+    if not usuario or rol != 'DIRECTOR': 
+        return RedirectResponse(url="/dashboard")
+
+    return templates.TemplateResponse("director_nuevo_maestro.html", {
+        "request": request
+    })
+
+# 2. ACCIÓN: GUARDAR EN BASE DE DATOS
+@app.post("/director/crear-maestro")
+async def crear_maestro(
+    request: Request,
+    nombre: str = Form(...),
+    usuario: str = Form(...),
+    password: str = Form(...)
+):
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+    
+    try:
+        # A. Validar que el usuario no exista ya (para no duplicar)
+        cursor.execute("SELECT id_usuario FROM users WHERE usuario = %s", (usuario,))
+        existe = cursor.fetchone()
+        
+        if existe:
+            return templates.TemplateResponse("director_nuevo_maestro.html", {
+                "request": request,
+                "error": f"El usuario '{usuario}' ya existe. Elija otro."
+            })
+
+        # B. Insertar el nuevo maestro
+        # Nota: El rol se fija automáticamente como 'MAESTRO'
+        query = """
+        INSERT INTO users (nombre_completo, usuario, password_hash, rol) 
+        VALUES (%s, %s, %s, 'MAESTRO')
+        """
+        cursor.execute(query, (nombre, usuario, password))
+        conn.commit()
+        
+        mensaje_exito = f"¡Maestro {nombre} registrado correctamente!"
+        
+    except Exception as e:
+        mensaje_exito = None
+        error = f"Error al guardar: {e}"
+        return templates.TemplateResponse("director_nuevo_maestro.html", {
+            "request": request, "error": error
+        })
+        
+    finally:
+        cursor.close()
+        conn.close()
+
+    # Si todo salió bien, mostramos el formulario limpio con mensaje de éxito
+    return templates.TemplateResponse("director_nuevo_maestro.html", {
+        "request": request, 
+        "mensaje": mensaje_exito
+    })

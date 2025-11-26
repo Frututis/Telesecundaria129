@@ -10,6 +10,7 @@
 
     <nav class="bg-gray-900 text-white p-4 shadow-lg sticky top-0 z-50">
         <div class="container mx-auto flex justify-between items-center">
+            
             <div class="flex items-center gap-3">
                 <span class="material-icons text-yellow-500">school</span>
                 <div>
@@ -17,13 +18,33 @@
                     <span class="text-xs text-gray-400 font-light">Panel de Control Directivo</span>
                 </div>
             </div>
-            <div class="flex items-center gap-4">
-                <div class="text-right hidden md:block">
+
+            <div class="flex items-center gap-6">
+                
+                <form action="/director/cambiar-ciclo" method="POST" class="flex items-center gap-2">
+                    <label class="hidden md:block text-xs text-gray-400 uppercase font-bold">Ciclo:</label>
+                    <div class="relative">
+                        <select name="nuevo_ciclo" onchange="this.form.submit()" 
+                                class="bg-gray-800 text-white text-sm border border-gray-600 rounded px-2 py-1 focus:outline-none focus:border-yellow-500 cursor-pointer hover:bg-gray-700 transition shadow-inner">
+                            
+                            {% for ciclo in lista_ciclos %}
+                            <option value="{{ ciclo }}" {% if ciclo == ciclo_actual %} selected {% endif %}>
+                                {{ ciclo }}
+                            </option>
+                            {% endfor %}
+                            
+                        </select>
+                    </div>
+                </form>
+
+                <div class="text-right hidden md:block border-l border-gray-700 pl-4">
                     <span class="block text-sm font-bold text-gray-200">{{ usuario }}</span>
                     <span class="block text-xs text-green-400 uppercase">Director General</span>
                 </div>
+
                 <a href="/logout" class="flex items-center gap-1 bg-red-600 hover:bg-red-700 px-3 py-2 rounded text-sm transition shadow">
-                    <span class="material-icons text-sm">logout</span> Salir
+                    <span class="material-icons text-sm">logout</span>
+                    <span class="hidden md:inline">Salir</span>
                 </a>
             </div>
         </div>
@@ -31,27 +52,16 @@
 
     <div class="container mx-auto p-6 md:p-8">
 
-        <div class="mb-6">
-            <h1 class="text-2xl font-bold text-gray-800 border-l-4 border-yellow-500 pl-3">
-                Menú Principal
-            </h1>
-            <p class="text-gray-500 text-sm mt-1 pl-4">Seleccione un módulo para gestionar.</p>
+        <div class="mb-6 flex justify-between items-end">
+            <div>
+                <h1 class="text-2xl font-bold text-gray-800 border-l-4 border-yellow-500 pl-3">
+                    Menú Principal
+                </h1>
+                <p class="text-gray-500 text-sm mt-1 pl-4">Viendo datos del ciclo: <span class="font-bold text-blue-600">{{ ciclo_actual }}</span></p>
+            </div>
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
-            <a href="/director/asignacion" class="group bg-white p-6 rounded-xl shadow-md hover:shadow-xl transform hover:-translate-y-1 transition duration-300 border-t-4 border-gray-800 relative overflow-hidden">
-                <div class="absolute right-0 top-0 p-4 opacity-10 group-hover:opacity-20 transition">
-                    <span class="material-icons" style="font-size: 80px;">manage_accounts</span>
-                </div>
-                <div class="flex items-center gap-3 mb-3">
-                    <div class="bg-gray-100 p-3 rounded-full text-gray-600">
-                        <span class="material-icons">school</span>
-                    </div>
-                    <h3 class="font-bold text-gray-800 text-lg">Asignar Grupos</h3>
-                </div>
-                <p class="text-gray-500 text-sm mb-4">Cambio de maestros y rotación de ciclos.</p>
-                <span class="text-gray-800 text-sm font-bold group-hover:underline">Configurar &rarr;</span>
-            </a>
 
             <a href="/director/estadisticas" class="group bg-white p-6 rounded-xl shadow-md hover:shadow-xl transform hover:-translate-y-1 transition duration-300 border-t-4 border-blue-500 relative overflow-hidden">
                 <div class="absolute right-0 top-0 p-4 opacity-10 group-hover:opacity-20 transition">
@@ -63,11 +73,11 @@
                     </div>
                     <h3 class="font-bold text-gray-800 text-lg">Estadísticas</h3>
                 </div>
-                <p class="text-gray-500 text-sm mb-4">Análisis de ausentismo, retardos y alumnos con riesgo.</p>
+                <p class="text-gray-500 text-sm mb-4">Análisis de asistencia, faltas y retardos.</p>
                 <span class="text-blue-600 text-sm font-bold group-hover:underline">Ver gráficas &rarr;</span>
             </a>
 
-            <a href="#" class="group bg-white p-6 rounded-xl shadow-md hover:shadow-xl transform hover:-translate-y-1 transition duration-300 border-t-4 border-green-500 relative overflow-hidden">
+            <a href="/ver-asistencias" class="group bg-white p-6 rounded-xl shadow-md hover:shadow-xl transform hover:-translate-y-1 transition duration-300 border-t-4 border-green-500 relative overflow-hidden">
                 <div class="absolute right-0 top-0 p-4 opacity-10 group-hover:opacity-20 transition">
                     <span class="material-icons" style="font-size: 80px;">alarm_on</span>
                 </div>
@@ -77,8 +87,8 @@
                     </div>
                     <h3 class="font-bold text-gray-800 text-lg">Asistencias</h3>
                 </div>
-                <p class="text-gray-500 text-sm mb-4">Monitor biométrico en tiempo real y reportes diarios.</p>
-                <span class="text-green-600 text-sm font-bold group-hover:underline">Ir al módulo &rarr;</span>
+                <p class="text-gray-500 text-sm mb-4">Monitor biométrico del día en tiempo real.</p>
+                <span class="text-green-600 text-sm font-bold group-hover:underline">Ver reporte hoy &rarr;</span>
             </a>
 
             <a href="#" class="group bg-white p-6 rounded-xl shadow-md hover:shadow-xl transform hover:-translate-y-1 transition duration-300 border-t-4 border-purple-500 relative overflow-hidden">
@@ -91,7 +101,7 @@
                     </div>
                     <h3 class="font-bold text-gray-800 text-lg">Expedientes</h3>
                 </div>
-                <p class="text-gray-500 text-sm mb-4">Documentación legal, CURP y fichas médicas.</p>
+                <p class="text-gray-500 text-sm mb-4">Documentación legal y fichas médicas.</p>
                 <span class="text-purple-600 text-sm font-bold group-hover:underline">Ir al módulo &rarr;</span>
             </a>
 
@@ -105,19 +115,34 @@
                     </div>
                     <h3 class="font-bold text-gray-800 text-lg">Planeaciones</h3>
                 </div>
-                <p class="text-gray-500 text-sm mb-4">Revisión de planes didácticos.</p>
-                <span class="text-orange-600 text-sm font-bold group-hover:underline">Ver todos los Maestros &darr;</span>
+                <p class="text-gray-500 text-sm mb-4">Repositorio de planes didácticos por maestro.</p>
+                <span class="text-orange-600 text-sm font-bold group-hover:underline">Ver carpetas &rarr;</span>
             </a>
+
+             <a href="/director/asignacion" class="group bg-white p-6 rounded-xl shadow-md hover:shadow-xl transform hover:-translate-y-1 transition duration-300 border-t-4 border-gray-800 relative overflow-hidden">
+                <div class="absolute right-0 top-0 p-4 opacity-10 group-hover:opacity-20 transition">
+                    <span class="material-icons" style="font-size: 80px;">manage_accounts</span>
+                </div>
+                <div class="flex items-center gap-3 mb-3">
+                    <div class="bg-gray-200 p-3 rounded-full text-gray-700">
+                        <span class="material-icons">school</span>
+                    </div>
+                    <h3 class="font-bold text-gray-800 text-lg">Asignar Grupos</h3>
+                </div>
+                <p class="text-gray-500 text-sm mb-4">Rotación de maestros y gestión de grupos.</p>
+                <span class="text-gray-800 text-sm font-bold group-hover:underline">Configurar &rarr;</span>
+            </a>
+
         </div>
 
         <div id="buzon-planeaciones" class="bg-white rounded-lg shadow-lg overflow-hidden border border-gray-200">
             <div class="bg-gray-800 text-white p-4 flex justify-between items-center">
                 <div class="flex items-center gap-2">
                     <span class="material-icons text-orange-400">inbox</span>
-                    <h3 class="font-bold text-lg">Buzón de Planeaciones Recientes</h3>
+                    <h3 class="font-bold text-lg">Últimas Planeaciones Recibidas ({{ ciclo_actual }})</h3>
                 </div>
                 <span class="bg-gray-700 px-3 py-1 rounded-full text-xs text-gray-300">
-                    Total: {{ planeaciones|length }}
+                    Mostrando recientes
                 </span>
             </div>
             
@@ -137,7 +162,7 @@
                         <tr class="border-b hover:bg-blue-50 transition duration-150">
                             <td class="p-4">
                                 <div class="flex items-center gap-2">
-                                    <div class="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold text-xs">
+                                    <div class="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold text-xs uppercase">
                                         {{ plan.nombre_completo[:2] }}
                                     </div>
                                     <span class="font-bold text-gray-700 text-sm">
@@ -161,7 +186,7 @@
                         <tr>
                             <td colspan="5" class="p-10 text-center flex flex-col items-center justify-center text-gray-400">
                                 <span class="material-icons text-5xl mb-2">folder_off</span>
-                                <p>No hay documentos pendientes de revisión.</p>
+                                <p>No hay documentos recientes para este ciclo escolar.</p>
                             </td>
                         </tr>
                         {% endfor %}
