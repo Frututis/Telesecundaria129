@@ -63,14 +63,19 @@ async def login_submit(request: Request, response: Response, username: str = For
         conn.close()
 
         if user:
-            # Login Exitoso: Guardamos cookies
+            # Login Exitoso
             redirect = RedirectResponse(url="/dashboard", status_code=303)
+            
+            # 1. Checamos si requiere cambio de contraseña
+            if user['requiere_cambio'] == 1:
+                # LO DESVIAMOS a la pantalla de cambio
+                redirect = RedirectResponse(url="/primer-ingreso", status_code=303)
+            
+            # Guardamos cookies (esto se hace igual en ambos casos para saber quién es)
             redirect.set_cookie(key="usuario_logueado", value=user['usuario'])
             redirect.set_cookie(key="rol_usuario", value=user['rol'])
             return redirect
-        else:
-            return templates.TemplateResponse("login.html", {"request": request, "error": "Datos incorrectos"})
-            
+        
     except Exception as e:
         return templates.TemplateResponse("login.html", {"request": request, "error": f"Error de conexión: {str(e)}"})
 
@@ -81,6 +86,45 @@ async def logout(response: Response):
     redirect.delete_cookie("rol_usuario")
     return redirect
 
+# --- MÓDULO DE CAMBIO DE CONTRASEÑA OBLIGATORIO ---
+
+@app.get("/primer-ingreso", response_class=HTMLResponse)
+async def vista_primer_ingreso(request: Request):
+    usuario = request.cookies.get("usuario_logueado")
+    if not usuario: return RedirectResponse(url="/")
+    return templates.TemplateResponse("cambiar_password.html", {"request": request})
+
+@app.post("/guardar-nuevo-password")
+async def guardar_nuevo_password(
+    request: Request, 
+    pass1: str = Form(...), 
+    pass2: str = Form(...)
+):
+    usuario = request.cookies.get("usuario_logueado")
+    if not usuario: return RedirectResponse(url="/")
+
+    # 1. Validar que coincidan
+    if pass1 != pass2:
+        return templates.TemplateResponse("cambiar_password.html", {
+            "request": request, "error": "Las contraseñas no coinciden."
+        })
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    try:
+        # 2. Actualizar contraseña y quitar la bandera (requiere_cambio = 0)
+        query = "UPDATE users SET password_hash = %s, requiere_cambio = 0 WHERE usuario = %s"
+        cursor.execute(query, (pass1, usuario))
+        conn.commit()
+    except Exception as e:
+        print(f"Error: {e}")
+    finally:
+        cursor.close()
+        conn.close()
+
+    # 3. Mandar al Dashboard ahora sí
+    return RedirectResponse(url="/dashboard", status_code=303)
 # ==========================================
 # 4. DASHBOARD PRINCIPAL (ROUTER)
 # ==========================================
@@ -371,6 +415,9 @@ async def form_nuevo_maestro(request: Request):
     })
 
 # 2. ACCIÓN: GUARDAR EN BASE DE DATOS
+# Asegúrate de importar esto arriba
+from mysql.connector import IntegrityError 
+
 @app.post("/director/crear-maestro")
 async def crear_maestro(
     request: Request,
@@ -382,40 +429,41 @@ async def crear_maestro(
     cursor = conn.cursor(dictionary=True)
     
     try:
-        # A. Validar que el usuario no exista ya (para no duplicar)
-        cursor.execute("SELECT id_usuario FROM users WHERE usuario = %s", (usuario,))
-        existe = cursor.fetchone()
-        
-        if existe:
-            return templates.TemplateResponse("director_nuevo_maestro.html", {
-                "request": request,
-                "error": f"El usuario '{usuario}' ya existe. Elija otro."
-            })
-
-        # B. Insertar el nuevo maestro
-        # Nota: El rol se fija automáticamente como 'MAESTRO'
+        # Intentamos guardar
         query = """
-        INSERT INTO users (nombre_completo, usuario, password_hash, rol) 
-        VALUES (%s, %s, %s, 'MAESTRO')
+        INSERT INTO users (nombre_completo, usuario, password_hash, rol, requiere_cambio) 
+        VALUES (%s, %s, %s, 'MAESTRO', 1)
         """
         cursor.execute(query, (nombre, usuario, password))
         conn.commit()
         
-        mensaje_exito = f"¡Maestro {nombre} registrado correctamente!"
-        
+        # Si llegamos aquí, fue el primer clic y todo salió bien
+        mensaje = f"¡Maestro {nombre} registrado correctamente!"
+        tipo_mensaje = "exito" # Verde
+
+    except IntegrityError as e:
+        # SI OCURRE EL ERROR DE DUPLICADO (Doble Clic)
+        if e.errno == 1062:
+            # En lugar de error, decimos: "Ya está listo"
+            mensaje = f"El maestro {nombre} ya está registrado (Detectamos doble clic, no te preocupes)."
+            tipo_mensaje = "warning" # Amarillo/Naranja para avisar suavemente
+        else:
+            # Si es otro error real, sí fallamos
+            mensaje = f"Error de base de datos: {e}"
+            tipo_mensaje = "error"
+
     except Exception as e:
-        mensaje_exito = None
-        error = f"Error al guardar: {e}"
-        return templates.TemplateResponse("director_nuevo_maestro.html", {
-            "request": request, "error": error
-        })
+        mensaje = f"Error del sistema: {e}"
+        tipo_mensaje = "error"
         
     finally:
         cursor.close()
         conn.close()
 
-    # Si todo salió bien, mostramos el formulario limpio con mensaje de éxito
+    # Devolvemos la vista con el mensaje procesado
     return templates.TemplateResponse("director_nuevo_maestro.html", {
         "request": request, 
-        "mensaje": mensaje_exito
+        "mensaje": mensaje if tipo_mensaje != "error" else None,
+        "error": mensaje if tipo_mensaje == "error" else None,
+        "tipo_alerta": tipo_mensaje # Pasamos el tipo para cambiar el color en HTML
     })
