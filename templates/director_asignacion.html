@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Asignación de Docentes</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+</head>
+<body class="bg-gray-100 font-sans">
+
+    <nav class="bg-gray-900 text-white p-4 shadow-lg flex justify-between items-center sticky top-0 z-50">
+        <div class="flex items-center gap-2">
+            <span class="material-icons text-purple-400">manage_accounts</span>
+            <span class="font-bold text-lg">Reasignación de Grupos</span>
+        </div>
+        <a href="/dashboard" class="text-sm bg-gray-700 hover:bg-gray-600 px-3 py-1 rounded transition">
+            &larr; Volver al Dashboard
+        </a>
+    </nav>
+
+    <div class="container mx-auto p-8 max-w-4xl">
+        
+        <div class="bg-white p-8 rounded-xl shadow-lg border-t-4 border-purple-500">
+            <div class="mb-6">
+                <h1 class="text-2xl font-bold text-gray-800">Ciclo Escolar 2024-2025</h1>
+                <p class="text-gray-500">Asigne el maestro titular correspondiente a cada grupo.</p>
+            </div>
+
+            <form action="/director/guardar-asignacion" method="post">
+                <div class="overflow-hidden rounded-lg border border-gray-200 mb-6">
+                    <table class="w-full text-left border-collapse">
+                        <thead class="bg-purple-50 text-purple-900 text-sm uppercase">
+                            <tr>
+                                <th class="p-4 border-b">Grado y Grupo</th>
+                                <th class="p-4 border-b">Maestro Actual</th>
+                                <th class="p-4 border-b">Asignar Nuevo Maestro</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for grupo in grupos %}
+                            <tr class="hover:bg-gray-50 border-b last:border-0">
+                                <td class="p-4 font-bold text-gray-700 text-lg">
+                                    {{ grupo.grado }}° "{{ grupo.grupo }}"
+                                </td>
+
+                                <td class="p-4 text-gray-500">
+                                    {% if grupo.nombre_actual %}
+                                        <span class="flex items-center gap-2">
+                                            <span class="material-icons text-sm text-green-500">check_circle</span>
+                                            {{ grupo.nombre_actual }}
+                                        </span>
+                                    {% else %}
+                                        <span class="text-red-400 italic">Sin asignar</span>
+                                    {% endif %}
+                                </td>
+
+                                <td class="p-4">
+                                    <div class="relative">
+                                        <select name="grupo_{{ grupo.id_grupo }}" 
+                                                class="block w-full bg-white border border-gray-300 text-gray-700 py-2 px-3 pr-8 rounded leading-tight focus:outline-none focus:bg-white focus:border-purple-500">
+                                            
+                                            <option value="" disabled>Seleccione...</option>
+                                            
+                                            {% for profe in maestros %}
+                                            <option value="{{ profe.id_usuario }}" 
+                                                {% if profe.id_usuario == grupo.id_maestro_encargado %} selected {% endif %}>
+                                                {{ profe.nombre_completo }}
+                                            </option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="flex justify-end">
+                    <button type="submit" class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-8 rounded shadow-lg transition transform hover:-translate-y-1 flex items-center gap-2">
+                        <span class="material-icons">save</span>
+                        Guardar Cambios
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+</body>
+</html>

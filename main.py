@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import Optional
 
 # Librerías de FastAPI y Web
-from fastapi import FastAPI, Request, Form, Response, UploadFile, File, Depends
+from fastapi import FastAPI, Request, Form, Response, UploadFile, File
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
@@ -12,57 +12,49 @@ from fastapi.staticfiles import StaticFiles
 # Librería de Base de Datos
 import mysql.connector
 
-# --- CONFIGURACIÓN INICIAL ---
-
+# ==========================================
+# 1. CONFIGURACIÓN GLOBAL DEL SISTEMA
+# ==========================================
 app = FastAPI()
 
-# 1. Configuración de carpetas
-# Creamos la carpeta 'uploads' si no existe (para guardar los PDFs)
-os.makedirs("uploads", exist_ok=True)
+# ¡IMPORTANTE! Cambia esto cada año (ej. "2025-2026") para limpiar las vistas
+CICLO_ACTUAL = "2024-2025"
 
-# 2. Montar archivos estáticos
-# Esto permite que el navegador pueda acceder a los archivos subidos mediante la URL /archivos/...
-app.mount("/archivos", StaticFiles(directory="uploads"), name="archivos")
+# Configuración de carpetas
+os.makedirs("uploads", exist_ok=True) # Crea carpeta para PDFs
+app.mount("/archivos", StaticFiles(directory="uploads"), name="archivos") # Hace públicos los PDFs
+templates = Jinja2Templates(directory="templates") # Carpeta de HTMLs
 
-# 3. Configuración de Plantillas HTML
-templates = Jinja2Templates(directory="templates")
-
-# --- CONEXIÓN A BASE DE DATOS (XAMPP) ---
+# ==========================================
+# 2. CONEXIÓN A BASE DE DATOS (XAMPP)
+# ==========================================
 def get_db_connection():
     return mysql.connector.connect(
         host="localhost",
-        user="root",      # Usuario por defecto de XAMPP
-        password="",      # Contraseña por defecto de XAMPP (vacía)
+        user="root",      # Usuario default XAMPP
+        password="",      # Password default XAMPP (vacío)
         database="TelesecundariaDB"
     )
 
-# --- RUTAS DEL SISTEMA ---
+# ==========================================
+# 3. AUTENTICACIÓN (LOGIN / LOGOUT)
+# ==========================================
 
-# 1. PÁGINA DE LOGIN (GET)
 @app.get("/", response_class=HTMLResponse)
 async def login_page(request: Request):
-    # Si el usuario ya tiene la cookie de sesión, lo mandamos directo al dashboard
+    # Si ya está logueado, ir directo al dashboard
     token = request.cookies.get("usuario_logueado")
     if token:
         return RedirectResponse(url="/dashboard")
-    
     return templates.TemplateResponse("login.html", {"request": request})
 
-
-# 2. PROCESAR LOGIN (POST)
 @app.post("/login", response_class=HTMLResponse)
-async def login_submit(
-    request: Request, 
-    response: Response, 
-    username: str = Form(...), 
-    password: str = Form(...)
-):
+async def login_submit(request: Request, response: Response, username: str = Form(...), password: str = Form(...)):
     try:
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
         
-        # Validar usuario y contraseña
-        # NOTA: En un sistema real, aquí usaríamos hash para la contraseña
+        # Validar usuario
         query = "SELECT * FROM users WHERE usuario = %s AND password_hash = %s"
         cursor.execute(query, (username, password))
         user = cursor.fetchone()
@@ -71,239 +63,209 @@ async def login_submit(
         conn.close()
 
         if user:
-            # Login Exitoso: Creamos cookies y redirigimos
+            # Login Exitoso: Guardamos cookies
             redirect = RedirectResponse(url="/dashboard", status_code=303)
             redirect.set_cookie(key="usuario_logueado", value=user['usuario'])
             redirect.set_cookie(key="rol_usuario", value=user['rol'])
             return redirect
         else:
-            # Login Fallido
-            return templates.TemplateResponse("login.html", {
-                "request": request, 
-                "error": "Usuario o contraseña incorrectos"
-            })
+            return templates.TemplateResponse("login.html", {"request": request, "error": "Datos incorrectos"})
             
     except Exception as e:
-        return templates.TemplateResponse("login.html", {
-            "request": request, 
-            "error": f"Error de conexión: {str(e)}"
-        })
+        return templates.TemplateResponse("login.html", {"request": request, "error": f"Error de conexión: {str(e)}"})
 
-
-# 3. DASHBOARD PRINCIPAL (GET)
-@app.get("/dashboard", response_class=HTMLResponse)
-async def dashboard(request: Request):
-    # Seguridad: Verificar cookies
-    usuario = request.cookies.get("usuario_logueado")
-    rol = request.cookies.get("rol_usuario")
-    
-    if not usuario:
-        return RedirectResponse(url="/")
-
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor(dictionary=True)
-
-        # VARIABLE: Nombre del archivo HTML a usar
-        archivo_html = "" 
-        lista_planeaciones = []
-
-        # LÓGICA DE NEGOCIO SEGÚN EL ROL
-        if rol == 'DIRECTOR':
-            # Definimos que usaremos la vista de director
-            archivo_html = "dashboard_director.html"
-            
-            # Query del Director (Todos los archivos + Nombre del maestro)
-            query = """
-            SELECT p.*, u.nombre_completo 
-            FROM planeaciones p 
-            JOIN users u ON p.id_maestro = u.id_usuario 
-            ORDER BY p.fecha_subida DESC
-            """
-            cursor.execute(query)
-            lista_planeaciones = cursor.fetchall()
-            
-        elif rol == 'MAESTRO':
-            # Definimos que usaremos la vista de maestro
-            archivo_html = "dashboard_maestro.html"
-
-            # Query del Maestro (Solo sus archivos)
-            cursor.execute("SELECT id_usuario FROM users WHERE usuario = %s", (usuario,))
-            user_data = cursor.fetchone()
-            
-            if user_data:
-                id_maestro = user_data['id_usuario']
-                query = "SELECT * FROM planeaciones WHERE id_maestro = %s ORDER BY fecha_subida DESC"
-                cursor.execute(query, (id_maestro,))
-                lista_planeaciones = cursor.fetchall()
-
-        cursor.close()
-        conn.close()
-
-        # AQUÍ ES EL CAMBIO CLAVE: Usamos la variable 'archivo_html' en lugar de un nombre fijo
-        return templates.TemplateResponse(archivo_html, {
-            "request": request,
-            "usuario": usuario,
-            "rol": rol,
-            "planeaciones": lista_planeaciones
-        })
-        
-    except Exception as e:
-        print(f"Error en dashboard: {e}")
-        return HTMLResponse(content=f"Error interno del servidor: {e}", status_code=500)
-
-# 4. SUBIR PLANEACIÓN (POST)
-@app.post("/subir-planeacion")
-async def subir_archivo(
-    request: Request, 
-    archivo: UploadFile = File(...), 
-    comentarios: str = Form(...)
-):
-    usuario = request.cookies.get("usuario_logueado")
-    if not usuario:
-        return RedirectResponse(url="/")
-    
-    try:
-        # A. Guardar el archivo físico en la carpeta 'uploads'
-        # Usamos timestamp para evitar nombres duplicados
-        nombre_seguro = f"{datetime.now().strftime('%Y%m%d%H%M%S')}_{archivo.filename}"
-        ubicacion_archivo = f"uploads/{nombre_seguro}"
-        
-        with open(ubicacion_archivo, "wb") as buffer:
-            shutil.copyfileobj(archivo.file, buffer)
-            
-        # B. Guardar el registro en MySQL
-        conn = get_db_connection()
-        cursor = conn.cursor(dictionary=True)
-        
-        # Obtener ID del maestro que está subiendo
-        cursor.execute("SELECT id_usuario FROM users WHERE usuario = %s", (usuario,))
-        userData = cursor.fetchone()
-        
-        if userData:
-            id_maestro = userData['id_usuario']
-            
-            # Insertar registro
-            query = """
-            INSERT INTO planeaciones (id_maestro, nombre_archivo, ruta_archivo, comentarios) 
-            VALUES (%s, %s, %s, %s)
-            """
-            cursor.execute(query, (id_maestro, archivo.filename, nombre_seguro, comentarios))
-            conn.commit()
-        
-        cursor.close()
-        conn.close()
-        
-        # Recargar el dashboard para ver el nuevo archivo
-        return RedirectResponse(url="/dashboard", status_code=303)
-
-    except Exception as e:
-        print(f"Error al subir archivo: {e}")
-        return HTMLResponse(content="Error al subir el archivo", status_code=500)
-
-
-# 5. CERRAR SESIÓN (GET)
 @app.get("/logout")
 async def logout(response: Response):
     redirect = RedirectResponse(url="/")
-    # Borramos las cookies para sacar al usuario
     redirect.delete_cookie("usuario_logueado")
     redirect.delete_cookie("rol_usuario")
     return redirect
 
-# --- NUEVAS RUTAS PARA EL MÓDULO DE PLANEACIONES ORGANIZADO ---
+# ==========================================
+# 4. DASHBOARD PRINCIPAL (ROUTER)
+# ==========================================
 
-# 1. VISTA GENERAL: LISTA DE MAESTROS
-@app.get("/director/maestros", response_class=HTMLResponse)
-async def lista_maestros(request: Request):
-    # Seguridad
+@app.get("/dashboard", response_class=HTMLResponse)
+async def dashboard(request: Request):
     usuario = request.cookies.get("usuario_logueado")
     rol = request.cookies.get("rol_usuario")
-    if not usuario or rol != 'DIRECTOR':
-        return RedirectResponse(url="/dashboard")
+    
+    if not usuario: return RedirectResponse(url="/")
 
     conn = get_db_connection()
     cursor = conn.cursor(dictionary=True)
 
-    # Obtenemos solo a los usuarios con rol de MAESTRO
-    # También contamos cuántas planeaciones ha subido cada uno (Opcional pero útil)
+    archivo_html = "" 
+    lista_planeaciones = []
+
+    try:
+        if rol == 'DIRECTOR':
+            archivo_html = "dashboard_director.html"
+            # Director ve planeaciones de TODOS, filtradas por CICLO ACTUAL
+            query = """
+            SELECT p.*, u.nombre_completo 
+            FROM planeaciones p 
+            JOIN users u ON p.id_maestro = u.id_usuario 
+            WHERE p.ciclo_escolar = %s
+            ORDER BY p.fecha_subida DESC
+            LIMIT 10
+            """
+            cursor.execute(query, (CICLO_ACTUAL,))
+            lista_planeaciones = cursor.fetchall()
+            
+        elif rol == 'MAESTRO':
+            archivo_html = "dashboard_maestro.html"
+            # Maestro ve SOLO SUS archivos del CICLO ACTUAL
+            cursor.execute("SELECT id_usuario FROM users WHERE usuario = %s", (usuario,))
+            user_data = cursor.fetchone()
+            if user_data:
+                id_maestro = user_data['id_usuario']
+                query = "SELECT * FROM planeaciones WHERE id_maestro = %s AND ciclo_escolar = %s ORDER BY fecha_subida DESC"
+                cursor.execute(query, (id_maestro, CICLO_ACTUAL))
+                lista_planeaciones = cursor.fetchall()
+
+    except Exception as e:
+        print(f"Error en dashboard: {e}")
+    finally:
+        cursor.close()
+        conn.close()
+
+    return templates.TemplateResponse(archivo_html, {
+        "request": request,
+        "usuario": usuario,
+        "rol": rol,
+        "planeaciones": lista_planeaciones
+    })
+
+# ==========================================
+# 5. MÓDULO DE PLANEACIONES (SUBIDA Y GESTIÓN)
+# ==========================================
+
+@app.post("/subir-planeacion")
+async def subir_archivo(request: Request, archivo: UploadFile = File(...), comentarios: str = Form(...)):
+    usuario = request.cookies.get("usuario_logueado")
+    if not usuario: return RedirectResponse(url="/")
+    
+    try:
+        # A. Guardar archivo físico
+        nombre_seguro = f"{datetime.now().strftime('%Y%m%d%H%M%S')}_{archivo.filename}"
+        ubicacion_archivo = f"uploads/{nombre_seguro}"
+        with open(ubicacion_archivo, "wb") as buffer:
+            shutil.copyfileobj(archivo.file, buffer)
+            
+        # B. Guardar en BD con CICLO ESCOLAR
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        
+        cursor.execute("SELECT id_usuario FROM users WHERE usuario = %s", (usuario,))
+        user_data = cursor.fetchone()
+        
+        if user_data:
+            id_maestro = user_data['id_usuario']
+            query = """
+            INSERT INTO planeaciones (id_maestro, nombre_archivo, ruta_archivo, comentarios, ciclo_escolar) 
+            VALUES (%s, %s, %s, %s, %s)
+            """
+            cursor.execute(query, (id_maestro, archivo.filename, nombre_seguro, comentarios, CICLO_ACTUAL))
+            conn.commit()
+        
+        cursor.close()
+        conn.close()
+        return RedirectResponse(url="/dashboard", status_code=303)
+
+    except Exception as e:
+        print(f"Error subiendo: {e}")
+        return HTMLResponse("Error interno", status_code=500)
+
+# VISTA DIRECTOR: LISTA DE CARPETAS (MAESTROS)
+@app.get("/director/maestros", response_class=HTMLResponse)
+async def lista_maestros(request: Request):
+    usuario = request.cookies.get("usuario_logueado")
+    if not usuario: return RedirectResponse(url="/")
+
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+    # Contamos archivos solo del ciclo actual
     query = """
     SELECT u.id_usuario, u.nombre_completo, 
-           (SELECT COUNT(*) FROM planeaciones p WHERE p.id_maestro = u.id_usuario) as total_archivos
+           (SELECT COUNT(*) FROM planeaciones p WHERE p.id_maestro = u.id_usuario AND p.ciclo_escolar = %s) as total_archivos
     FROM users u 
     WHERE u.rol = 'MAESTRO'
     """
-    cursor.execute(query)
+    cursor.execute(query, (CICLO_ACTUAL,))
     maestros = cursor.fetchall()
-    
-    cursor.close()
     conn.close()
 
-    return templates.TemplateResponse("director_lista_maestros.html", {
-        "request": request,
-        "lista_maestros": maestros
-    })
+    return templates.TemplateResponse("director_lista_maestros.html", {"request": request, "lista_maestros": maestros})
 
-# 2. VISTA DETALLADA: ARCHIVOS DE UN MAESTRO ESPECÍFICO
+# VISTA DIRECTOR: ARCHIVOS DE UN MAESTRO
 @app.get("/director/ver-planeaciones/{id_maestro}", response_class=HTMLResponse)
 async def detalle_planeaciones_maestro(request: Request, id_maestro: int):
-    # Seguridad
     usuario = request.cookies.get("usuario_logueado")
-    rol = request.cookies.get("rol_usuario")
-    if not usuario or rol != 'DIRECTOR':
-        return RedirectResponse(url="/dashboard")
+    if not usuario: return RedirectResponse(url="/")
 
     conn = get_db_connection()
     cursor = conn.cursor(dictionary=True)
 
-    # A. Obtenemos el nombre del maestro para el título
     cursor.execute("SELECT nombre_completo FROM users WHERE id_usuario = %s", (id_maestro,))
-    datos_maestro = cursor.fetchone()
-    nombre_maestro = datos_maestro['nombre_completo'] if datos_maestro else "Maestro Desconocido"
+    dato = cursor.fetchone()
+    nombre = dato['nombre_completo'] if dato else "Maestro"
 
-    # B. Obtenemos sus archivos
-    query = """
-    SELECT * FROM planeaciones 
-    WHERE id_maestro = %s 
-    ORDER BY fecha_subida DESC
-    """
-    cursor.execute(query, (id_maestro,))
+    # Filtramos por ciclo actual
+    query = "SELECT * FROM planeaciones WHERE id_maestro = %s AND ciclo_escolar = %s ORDER BY fecha_subida DESC"
+    cursor.execute(query, (id_maestro, CICLO_ACTUAL))
     archivos = cursor.fetchall()
-    
-    cursor.close()
     conn.close()
 
     return templates.TemplateResponse("director_detalle_planeaciones.html", {
-        "request": request,
-        "nombre_maestro": nombre_maestro,
-        "planeaciones": archivos
+        "request": request, "nombre_maestro": nombre, "planeaciones": archivos
     })
 
-# --- MÓDULO DE ESTADÍSTICAS DE ASISTENCIA (NUEVO) ---
+# ==========================================
+# 6. MÓDULO DE ASISTENCIA (ESTADÍSTICAS Y REPORTE)
+# ==========================================
 
+# VISTA: REPORTE DIARIO (TABLA)
+@app.get("/ver-asistencias", response_class=HTMLResponse)
+async def ver_asistencias(request: Request):
+    usuario = request.cookies.get("usuario_logueado")
+    if not usuario: return RedirectResponse(url="/")
+
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+    
+    query = """
+    SELECT a.hora_entrada, a.estado, al.nombre_completo, g.grado, g.grupo
+    FROM asistencia a
+    JOIN alumnos al ON a.id_alumno = al.id_alumno
+    JOIN grupos g ON al.id_grupo = g.id_grupo
+    WHERE a.fecha = CURDATE()
+    ORDER BY a.hora_entrada DESC
+    """
+    cursor.execute(query)
+    resultados = cursor.fetchall()
+    conn.close()
+
+    return templates.TemplateResponse("asistencia_director.html", {
+        "request": request, "lista_asistencia": resultados, "fecha_hoy": datetime.now().strftime('%d/%m/%Y')
+    })
+
+# VISTA: ESTADÍSTICAS AVANZADAS (GRÁFICAS)
 @app.get("/director/estadisticas", response_class=HTMLResponse)
 async def estadisticas_asistencia(request: Request):
     usuario = request.cookies.get("usuario_logueado")
-    rol = request.cookies.get("rol_usuario")
-    if not usuario or rol != 'DIRECTOR': return RedirectResponse(url="/dashboard")
+    if not usuario: return RedirectResponse(url="/")
 
     conn = get_db_connection()
     cursor = conn.cursor(dictionary=True)
 
-    # 1. ESTADÍSTICA GENERAL (Pastel)
-    # Cuántas asistencias, faltas y retardos hay en TOTAL en la historia
+    # 1. GLOBAL (Pastel)
     cursor.execute("SELECT estado, COUNT(*) as total FROM asistencia GROUP BY estado")
     datos_globales = cursor.fetchall()
-    
-    # Procesamos para enviar listas simples a la gráfica (Chart.js)
-    labels_global = []
-    data_global = []
-    for d in datos_globales:
-        labels_global.append(d['estado'])
-        data_global.append(d['total'])
+    labels_global = [d['estado'] for d in datos_globales]
+    data_global = [d['total'] for d in datos_globales]
 
-    # 2. ESTADÍSTICA POR GRUPO (Barras)
-    # Qué grupo tiene más FALTAS
+    # 2. GRUPOS (Barras)
     query_grupos = """
     SELECT CONCAT(g.grado, '° ', g.grupo) as nombre_grupo, COUNT(*) as total_faltas
     FROM asistencia a
@@ -315,46 +277,77 @@ async def estadisticas_asistencia(request: Request):
     """
     cursor.execute(query_grupos)
     datos_grupos = cursor.fetchall()
-    
     labels_grupo = [d['nombre_grupo'] for d in datos_grupos]
     data_grupo = [d['total_faltas'] for d in datos_grupos]
 
-    # 3. TOP 5 ALUMNOS FALTISTAS (Tabla Roja)
-    query_top_faltas = """
-    SELECT al.nombre_completo, CONCAT(g.grado, '° ', g.grupo) as grupo, COUNT(*) as cantidad
-    FROM asistencia a
-    JOIN alumnos al ON a.id_alumno = al.id_alumno
-    JOIN grupos g ON al.id_grupo = g.id_grupo
-    WHERE a.estado = 'FALTA'
-    GROUP BY al.id_alumno
-    ORDER BY cantidad DESC
-    LIMIT 5
-    """
-    cursor.execute(query_top_faltas)
+    # 3. TOP FALTAS
+    cursor.execute("""
+        SELECT al.nombre_completo, CONCAT(g.grado, '° ', g.grupo) as grupo, COUNT(*) as cantidad
+        FROM asistencia a JOIN alumnos al ON a.id_alumno = al.id_alumno JOIN grupos g ON al.id_grupo = g.id_grupo
+        WHERE a.estado = 'FALTA' GROUP BY al.id_alumno ORDER BY cantidad DESC LIMIT 5
+    """)
     top_faltas = cursor.fetchall()
 
-    # 4. TOP 5 ALUMNOS CON RETARDOS (Tabla Amarilla)
-    query_top_retardos = """
-    SELECT al.nombre_completo, CONCAT(g.grado, '° ', g.grupo) as grupo, COUNT(*) as cantidad
-    FROM asistencia a
-    JOIN alumnos al ON a.id_alumno = al.id_alumno
-    JOIN grupos g ON al.id_grupo = g.id_grupo
-    WHERE a.estado = 'RETARDO'
-    GROUP BY al.id_alumno
-    ORDER BY cantidad DESC
-    LIMIT 5
-    """
-    cursor.execute(query_top_retardos)
+    # 4. TOP RETARDOS
+    cursor.execute("""
+        SELECT al.nombre_completo, CONCAT(g.grado, '° ', g.grupo) as grupo, COUNT(*) as cantidad
+        FROM asistencia a JOIN alumnos al ON a.id_alumno = al.id_alumno JOIN grupos g ON al.id_grupo = g.id_grupo
+        WHERE a.estado = 'RETARDO' GROUP BY al.id_alumno ORDER BY cantidad DESC LIMIT 5
+    """)
     top_retardos = cursor.fetchall()
-
     conn.close()
 
     return templates.TemplateResponse("estadisticas_director.html", {
         "request": request,
-        "labels_global": labels_global,
-        "data_global": data_global,
-        "labels_grupo": labels_grupo,
-        "data_grupo": data_grupo,
-        "top_faltas": top_faltas,
-        "top_retardos": top_retardos
+        "labels_global": labels_global, "data_global": data_global,
+        "labels_grupo": labels_grupo, "data_grupo": data_grupo,
+        "top_faltas": top_faltas, "top_retardos": top_retardos
     })
+
+# ==========================================
+# 7. MÓDULO DE ASIGNACIÓN (CAMBIO DE MAESTROS)
+# ==========================================
+
+@app.get("/director/asignacion", response_class=HTMLResponse)
+async def ver_asignacion(request: Request):
+    usuario = request.cookies.get("usuario_logueado")
+    if not usuario: return RedirectResponse(url="/")
+
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+
+    # Lista de grupos
+    cursor.execute("""
+        SELECT g.id_grupo, g.grado, g.grupo, g.id_maestro_encargado, u.nombre_completo as nombre_actual
+        FROM grupos g LEFT JOIN users u ON g.id_maestro_encargado = u.id_usuario
+        ORDER BY g.grado, g.grupo
+    """)
+    lista_grupos = cursor.fetchall()
+
+    # Lista de maestros
+    cursor.execute("SELECT id_usuario, nombre_completo FROM users WHERE rol = 'MAESTRO'")
+    lista_maestros = cursor.fetchall()
+    conn.close()
+
+    return templates.TemplateResponse("director_asignacion.html", {
+        "request": request, "grupos": lista_grupos, "maestros": lista_maestros
+    })
+
+@app.post("/director/guardar-asignacion")
+async def guardar_asignacion(request: Request):
+    form_data = await request.form()
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        for key, value in form_data.items():
+            if key.startswith("grupo_"):
+                id_grupo = key.split("_")[1]
+                id_nuevo_maestro = value 
+                cursor.execute("UPDATE grupos SET id_maestro_encargado = %s WHERE id_grupo = %s", (id_nuevo_maestro, id_grupo))
+        conn.commit()
+    except Exception as e:
+        print(f"Error: {e}")
+    finally:
+        cursor.close()
+        conn.close()
+    return RedirectResponse(url="/director/asignacion", status_code=303)
