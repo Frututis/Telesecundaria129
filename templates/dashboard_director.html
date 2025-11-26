@@ -2,74 +2,159 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Dirección - Supervisión</title>
+    <title>Dirección - SIGET</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
 </head>
 <body class="bg-gray-100 font-sans">
 
-    <nav class="bg-gray-900 text-white p-4 shadow-lg flex justify-between items-center">
-        <div class="flex items-center gap-2">
-            <span class="text-xl">🎓</span>
-            <span class="font-bold text-lg">Panel de Dirección</span>
-        </div>
-        <div>
-            <span class="mr-4 text-gray-300">Bienvenido, Director</span>
-            <a href="/logout" class="bg-red-600 hover:bg-red-700 px-4 py-2 rounded text-sm transition">Cerrar Sesión</a>
+    <nav class="bg-gray-900 text-white p-4 shadow-lg sticky top-0 z-50">
+        <div class="container mx-auto flex justify-between items-center">
+            <div class="flex items-center gap-3">
+                <span class="material-icons text-yellow-500">school</span>
+                <div>
+                    <span class="font-bold text-lg block leading-none">SIGET Telesecundaria</span>
+                    <span class="text-xs text-gray-400 font-light">Panel de Control Directivo</span>
+                </div>
+            </div>
+            <div class="flex items-center gap-4">
+                <div class="text-right hidden md:block">
+                    <span class="block text-sm font-bold text-gray-200">{{ usuario }}</span>
+                    <span class="block text-xs text-green-400 uppercase">Director General</span>
+                </div>
+                <a href="/logout" class="flex items-center gap-1 bg-red-600 hover:bg-red-700 px-3 py-2 rounded text-sm transition shadow">
+                    <span class="material-icons text-sm">logout</span> Salir
+                </a>
+            </div>
         </div>
     </nav>
 
-    <div class="container mx-auto p-8">
+    <div class="container mx-auto p-6 md:p-8">
 
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-            <div class="bg-white p-6 rounded-lg shadow border-l-4 border-green-500">
-                <h3 class="text-gray-500 text-sm uppercase font-bold">Planeaciones Recibidas</h3>
-                <p class="text-3xl font-bold text-gray-800">{{ planeaciones|length }}</p>
-            </div>
-            </div>
+        <div class="mb-6">
+            <h1 class="text-2xl font-bold text-gray-800 border-l-4 border-yellow-500 pl-3">
+                Menú Principal
+            </h1>
+            <p class="text-gray-500 text-sm mt-1 pl-4">Seleccione un módulo para gestionar.</p>
+        </div>
 
-        <div class="bg-white rounded-lg shadow-lg overflow-hidden">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
+
+            <a href="/director/estadisticas" class="group bg-white p-6 rounded-xl shadow-md hover:shadow-xl transform hover:-translate-y-1 transition duration-300 border-t-4 border-blue-500 relative overflow-hidden">
+                <div class="absolute right-0 top-0 p-4 opacity-10 group-hover:opacity-20 transition">
+                    <span class="material-icons" style="font-size: 80px;">insights</span>
+                </div>
+                <div class="flex items-center gap-3 mb-3">
+                    <div class="bg-blue-100 p-3 rounded-full text-blue-600">
+                        <span class="material-icons">analytics</span>
+                    </div>
+                    <h3 class="font-bold text-gray-800 text-lg">Estadísticas</h3>
+                </div>
+                <p class="text-gray-500 text-sm mb-4">Análisis de ausentismo, retardos y alumnos con riesgo.</p>
+                <span class="text-blue-600 text-sm font-bold group-hover:underline">Ver gráficas &rarr;</span>
+            </a>
+
+            <a href="#" class="group bg-white p-6 rounded-xl shadow-md hover:shadow-xl transform hover:-translate-y-1 transition duration-300 border-t-4 border-green-500 relative overflow-hidden">
+                <div class="absolute right-0 top-0 p-4 opacity-10 group-hover:opacity-20 transition">
+                    <span class="material-icons" style="font-size: 80px;">alarm_on</span>
+                </div>
+                <div class="flex items-center gap-3 mb-3">
+                    <div class="bg-green-100 p-3 rounded-full text-green-600">
+                        <span class="material-icons">fingerprint</span>
+                    </div>
+                    <h3 class="font-bold text-gray-800 text-lg">Asistencias</h3>
+                </div>
+                <p class="text-gray-500 text-sm mb-4">Monitor biométrico en tiempo real y reportes diarios.</p>
+                <span class="text-green-600 text-sm font-bold group-hover:underline">Ir al módulo &rarr;</span>
+            </a>
+
+            <a href="#" class="group bg-white p-6 rounded-xl shadow-md hover:shadow-xl transform hover:-translate-y-1 transition duration-300 border-t-4 border-purple-500 relative overflow-hidden">
+                <div class="absolute right-0 top-0 p-4 opacity-10 group-hover:opacity-20 transition">
+                    <span class="material-icons" style="font-size: 80px;">folder_shared</span>
+                </div>
+                <div class="flex items-center gap-3 mb-3">
+                    <div class="bg-purple-100 p-3 rounded-full text-purple-600">
+                        <span class="material-icons">description</span>
+                    </div>
+                    <h3 class="font-bold text-gray-800 text-lg">Expedientes</h3>
+                </div>
+                <p class="text-gray-500 text-sm mb-4">Documentación legal, CURP y fichas médicas.</p>
+                <span class="text-purple-600 text-sm font-bold group-hover:underline">Ir al módulo &rarr;</span>
+            </a>
+
+            <a href="/director/maestros" class="group bg-white p-6 rounded-xl shadow-md hover:shadow-xl transform hover:-translate-y-1 transition duration-300 border-t-4 border-orange-500 relative overflow-hidden">
+                <div class="absolute right-0 top-0 p-4 opacity-10 group-hover:opacity-20 transition">
+                    <span class="material-icons" style="font-size: 80px;">topic</span>
+                </div>
+                <div class="flex items-center gap-3 mb-3">
+                    <div class="bg-orange-100 p-3 rounded-full text-orange-600">
+                        <span class="material-icons">assignment</span>
+                    </div>
+                    <h3 class="font-bold text-gray-800 text-lg">Planeaciones</h3>
+                </div>
+                <p class="text-gray-500 text-sm mb-4">Revisión de planes didácticos de los 11 maestros.</p>
+                <span class="text-orange-600 text-sm font-bold group-hover:underline">Ver lista abajo &darr;</span>
+            </a>
+        </div>
+
+        <div id="buzon-planeaciones" class="bg-white rounded-lg shadow-lg overflow-hidden border border-gray-200">
             <div class="bg-gray-800 text-white p-4 flex justify-between items-center">
-                <h3 class="font-bold text-lg">📥 Buzón de Planeaciones (Todos los Maestros)</h3>
+                <div class="flex items-center gap-2">
+                    <span class="material-icons text-orange-400">inbox</span>
+                    <h3 class="font-bold text-lg">Buzón de Planeaciones Recientes</h3>
+                </div>
+                <span class="bg-gray-700 px-3 py-1 rounded-full text-xs text-gray-300">
+                    Total: {{ planeaciones|length }}
+                </span>
             </div>
             
-            <table class="w-full text-left border-collapse">
-                <thead>
-                    <tr class="bg-gray-100 border-b text-gray-600 text-sm uppercase">
-                        <th class="p-4 font-bold">Maestro</th> <th class="p-4 font-bold">Archivo</th>
-                        <th class="p-4 font-bold">Comentarios</th>
-                        <th class="p-4 font-bold">Fecha Entrega</th>
-                        <th class="p-4 font-bold">Revisión</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for plan in planeaciones %}
-                    <tr class="border-b hover:bg-gray-50 transition">
-                        <td class="p-4">
-                            <span class="font-bold text-blue-900 bg-blue-100 px-2 py-1 rounded text-xs uppercase">
-                                {{ plan.nombre_completo }}
-                            </span>
-                        </td>
-                        <td class="p-4 text-gray-800 font-medium">
-                            {{ plan.nombre_archivo }}
-                        </td>
-                        <td class="p-4 text-gray-600 italic">{{ plan.comentarios }}</td>
-                        <td class="p-4 text-gray-500 text-sm">{{ plan.fecha_subida }}</td>
-                        <td class="p-4">
-                            <a href="/archivos/{{ plan.ruta_archivo }}" target="_blank" 
-                               class="bg-green-100 text-green-700 hover:bg-green-200 px-3 py-1 rounded font-bold text-xs uppercase tracking-wide transition">
-                                👁️ Revisar PDF
-                            </a>
-                        </td>
-                    </tr>
-                    {% else %}
-                    <tr>
-                        <td colspan="5" class="p-8 text-center text-gray-500">
-                            No hay documentos para revisar.
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-gray-50 border-b text-gray-600 text-xs uppercase tracking-wider">
+                            <th class="p-4 font-bold">Maestro / Grupo</th>
+                            <th class="p-4 font-bold">Archivo</th>
+                            <th class="p-4 font-bold">Detalle / Semana</th>
+                            <th class="p-4 font-bold">Fecha Entrega</th>
+                            <th class="p-4 font-bold text-center">Acción</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for plan in planeaciones %}
+                        <tr class="border-b hover:bg-blue-50 transition duration-150">
+                            <td class="p-4">
+                                <div class="flex items-center gap-2">
+                                    <div class="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold text-xs">
+                                        {{ plan.nombre_completo[:2] }}
+                                    </div>
+                                    <span class="font-bold text-gray-700 text-sm">
+                                        {{ plan.nombre_completo }}
+                                    </span>
+                                </div>
+                            </td>
+                            <td class="p-4 text-gray-800 text-sm font-medium">
+                                {{ plan.nombre_archivo }}
+                            </td>
+                            <td class="p-4 text-gray-600 text-sm italic">{{ plan.comentarios }}</td>
+                            <td class="p-4 text-gray-500 text-xs font-mono">{{ plan.fecha_subida }}</td>
+                            <td class="p-4 text-center">
+                                <a href="/archivos/{{ plan.ruta_archivo }}" target="_blank" 
+                                   class="inline-flex items-center gap-1 bg-white border border-gray-300 text-gray-700 hover:bg-blue-50 hover:text-blue-700 hover:border-blue-300 px-3 py-1 rounded shadow-sm text-xs font-bold transition">
+                                    <span class="material-icons text-sm">visibility</span> Ver
+                                </a>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="5" class="p-10 text-center flex flex-col items-center justify-center text-gray-400">
+                                <span class="material-icons text-5xl mb-2">folder_off</span>
+                                <p>No hay documentos pendientes de revisión.</p>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
         </div>
 
     </div>

@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Archivos del Maestro</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+</head>
+<body class="bg-gray-50 font-sans">
+
+    <nav class="bg-blue-900 text-white p-4 shadow-lg flex justify-between items-center">
+        <div class="font-bold text-lg flex items-center gap-2">
+            <span class="material-icons">folder_open</span>
+            Archivos de: {{ nombre_maestro }}
+        </div>
+        <a href="/director/maestros" class="bg-blue-800 hover:bg-blue-700 px-4 py-2 rounded text-sm transition shadow">
+            &larr; Volver a la Lista
+        </a>
+    </nav>
+
+    <div class="container mx-auto p-8 max-w-5xl">
+        
+        <div class="bg-white rounded-lg shadow-lg overflow-hidden">
+            <table class="w-full text-left border-collapse">
+                <thead>
+                    <tr class="bg-gray-100 border-b text-gray-600 text-sm uppercase">
+                        <th class="p-4">Nombre del Archivo</th>
+                        <th class="p-4">Descripción / Semana</th>
+                        <th class="p-4">Fecha de Subida</th>
+                        <th class="p-4 text-center">Acción</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for plan in planeaciones %}
+                    <tr class="border-b hover:bg-blue-50 transition">
+                        <td class="p-4 flex items-center gap-2 font-medium text-gray-800">
+                            <span class="material-icons text-red-500 text-sm">picture_as_pdf</span>
+                            {{ plan.nombre_archivo }}
+                        </td>
+                        <td class="p-4 text-gray-600">{{ plan.comentarios }}</td>
+                        <td class="p-4 text-gray-500 text-sm font-mono">{{ plan.fecha_subida }}</td>
+                        <td class="p-4 text-center">
+                            <a href="/archivos/{{ plan.ruta_archivo }}" target="_blank" 
+                               class="bg-green-100 text-green-700 hover:bg-green-200 px-3 py-1 rounded text-xs font-bold uppercase transition flex items-center justify-center gap-1 w-24 mx-auto">
+                                <span class="material-icons text-xs">visibility</span> Ver
+                            </a>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="4" class="p-10 text-center text-gray-400 flex flex-col items-center">
+                            <span class="material-icons text-4xl mb-2">folder_off</span>
+                            Este maestro aún no ha subido planeaciones.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</body>
+</html>

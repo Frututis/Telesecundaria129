@@ -210,3 +210,151 @@ async def logout(response: Response):
     redirect.delete_cookie("usuario_logueado")
     redirect.delete_cookie("rol_usuario")
     return redirect
+
+# --- NUEVAS RUTAS PARA EL MÓDULO DE PLANEACIONES ORGANIZADO ---
+
+# 1. VISTA GENERAL: LISTA DE MAESTROS
+@app.get("/director/maestros", response_class=HTMLResponse)
+async def lista_maestros(request: Request):
+    # Seguridad
+    usuario = request.cookies.get("usuario_logueado")
+    rol = request.cookies.get("rol_usuario")
+    if not usuario or rol != 'DIRECTOR':
+        return RedirectResponse(url="/dashboard")
+
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+
+    # Obtenemos solo a los usuarios con rol de MAESTRO
+    # También contamos cuántas planeaciones ha subido cada uno (Opcional pero útil)
+    query = """
+    SELECT u.id_usuario, u.nombre_completo, 
+           (SELECT COUNT(*) FROM planeaciones p WHERE p.id_maestro = u.id_usuario) as total_archivos
+    FROM users u 
+    WHERE u.rol = 'MAESTRO'
+    """
+    cursor.execute(query)
+    maestros = cursor.fetchall()
+    
+    cursor.close()
+    conn.close()
+
+    return templates.TemplateResponse("director_lista_maestros.html", {
+        "request": request,
+        "lista_maestros": maestros
+    })
+
+# 2. VISTA DETALLADA: ARCHIVOS DE UN MAESTRO ESPECÍFICO
+@app.get("/director/ver-planeaciones/{id_maestro}", response_class=HTMLResponse)
+async def detalle_planeaciones_maestro(request: Request, id_maestro: int):
+    # Seguridad
+    usuario = request.cookies.get("usuario_logueado")
+    rol = request.cookies.get("rol_usuario")
+    if not usuario or rol != 'DIRECTOR':
+        return RedirectResponse(url="/dashboard")
+
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+
+    # A. Obtenemos el nombre del maestro para el título
+    cursor.execute("SELECT nombre_completo FROM users WHERE id_usuario = %s", (id_maestro,))
+    datos_maestro = cursor.fetchone()
+    nombre_maestro = datos_maestro['nombre_completo'] if datos_maestro else "Maestro Desconocido"
+
+    # B. Obtenemos sus archivos
+    query = """
+    SELECT * FROM planeaciones 
+    WHERE id_maestro = %s 
+    ORDER BY fecha_subida DESC
+    """
+    cursor.execute(query, (id_maestro,))
+    archivos = cursor.fetchall()
+    
+    cursor.close()
+    conn.close()
+
+    return templates.TemplateResponse("director_detalle_planeaciones.html", {
+        "request": request,
+        "nombre_maestro": nombre_maestro,
+        "planeaciones": archivos
+    })
+
+# --- MÓDULO DE ESTADÍSTICAS DE ASISTENCIA (NUEVO) ---
+
+@app.get("/director/estadisticas", response_class=HTMLResponse)
+async def estadisticas_asistencia(request: Request):
+    usuario = request.cookies.get("usuario_logueado")
+    rol = request.cookies.get("rol_usuario")
+    if not usuario or rol != 'DIRECTOR': return RedirectResponse(url="/dashboard")
+
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+
+    # 1. ESTADÍSTICA GENERAL (Pastel)
+    # Cuántas asistencias, faltas y retardos hay en TOTAL en la historia
+    cursor.execute("SELECT estado, COUNT(*) as total FROM asistencia GROUP BY estado")
+    datos_globales = cursor.fetchall()
+    
+    # Procesamos para enviar listas simples a la gráfica (Chart.js)
+    labels_global = []
+    data_global = []
+    for d in datos_globales:
+        labels_global.append(d['estado'])
+        data_global.append(d['total'])
+
+    # 2. ESTADÍSTICA POR GRUPO (Barras)
+    # Qué grupo tiene más FALTAS
+    query_grupos = """
+    SELECT CONCAT(g.grado, '° ', g.grupo) as nombre_grupo, COUNT(*) as total_faltas
+    FROM asistencia a
+    JOIN alumnos al ON a.id_alumno = al.id_alumno
+    JOIN grupos g ON al.id_grupo = g.id_grupo
+    WHERE a.estado = 'FALTA'
+    GROUP BY g.id_grupo
+    ORDER BY total_faltas DESC
+    """
+    cursor.execute(query_grupos)
+    datos_grupos = cursor.fetchall()
+    
+    labels_grupo = [d['nombre_grupo'] for d in datos_grupos]
+    data_grupo = [d['total_faltas'] for d in datos_grupos]
+
+    # 3. TOP 5 ALUMNOS FALTISTAS (Tabla Roja)
+    query_top_faltas = """
+    SELECT al.nombre_completo, CONCAT(g.grado, '° ', g.grupo) as grupo, COUNT(*) as cantidad
+    FROM asistencia a
+    JOIN alumnos al ON a.id_alumno = al.id_alumno
+    JOIN grupos g ON al.id_grupo = g.id_grupo
+    WHERE a.estado = 'FALTA'
+    GROUP BY al.id_alumno
+    ORDER BY cantidad DESC
+    LIMIT 5
+    """
+    cursor.execute(query_top_faltas)
+    top_faltas = cursor.fetchall()
+
+    # 4. TOP 5 ALUMNOS CON RETARDOS (Tabla Amarilla)
+    query_top_retardos = """
+    SELECT al.nombre_completo, CONCAT(g.grado, '° ', g.grupo) as grupo, COUNT(*) as cantidad
+    FROM asistencia a
+    JOIN alumnos al ON a.id_alumno = al.id_alumno
+    JOIN grupos g ON al.id_grupo = g.id_grupo
+    WHERE a.estado = 'RETARDO'
+    GROUP BY al.id_alumno
+    ORDER BY cantidad DESC
+    LIMIT 5
+    """
+    cursor.execute(query_top_retardos)
+    top_retardos = cursor.fetchall()
+
+    conn.close()
+
+    return templates.TemplateResponse("estadisticas_director.html", {
+        "request": request,
+        "labels_global": labels_global,
+        "data_global": data_global,
+        "labels_grupo": labels_grupo,
+        "data_grupo": data_grupo,
+        "top_faltas": top_faltas,
+        "top_retardos": top_retardos
+    })

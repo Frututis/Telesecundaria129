@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Seleccionar Maestro</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+</head>
+<body class="bg-gray-100 font-sans">
+
+    <nav class="bg-gray-900 text-white p-4 shadow-lg flex justify-between items-center sticky top-0 z-50">
+        <div class="flex items-center gap-2">
+            <span class="material-icons text-orange-500">folder_shared</span>
+            <span class="font-bold text-lg">Repositorio Docente</span>
+        </div>
+        <a href="/dashboard" class="text-sm bg-gray-700 hover:bg-gray-600 px-3 py-1 rounded transition">
+            &larr; Volver al Inicio
+        </a>
+    </nav>
+
+    <div class="container mx-auto p-8">
+        <h1 class="text-2xl font-bold text-gray-800 mb-2">Plantilla Docente</h1>
+        <p class="text-gray-500 mb-8">Seleccione un maestro para ver sus planeaciones y archivos.</p>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {% for profe in lista_maestros %}
+            <a href="/director/ver-planeaciones/{{ profe.id_usuario }}" 
+               class="group bg-white p-6 rounded-xl shadow-md hover:shadow-xl hover:-translate-y-1 transition duration-300 border-l-4 border-blue-500 flex items-center justify-between">
+                
+                <div class="flex items-center gap-4">
+                    <div class="h-12 w-12 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-lg group-hover:bg-blue-600 group-hover:text-white transition">
+                        {{ profe.nombre_completo[:1] }}
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-gray-800 text-lg">{{ profe.nombre_completo }}</h3>
+                        <span class="text-sm text-gray-500">Docente</span>
+                    </div>
+                </div>
+
+                <div class="text-center">
+                    <span class="block font-bold text-2xl text-gray-700">{{ profe.total_archivos }}</span>
+                    <span class="text-xs text-gray-400 uppercase">Archivos</span>
+                </div>
+            </a>
+            {% else %}
+            <p class="text-gray-500 col-span-3 text-center">No hay maestros registrados en el sistema.</p>
+            {% endfor %}
+        </div>
+    </div>
+
+</body>
+</html>
