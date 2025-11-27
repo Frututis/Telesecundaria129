@@ -1,0 +1,6 @@
+git add .
+git commit -m "Mensaje de actualizaciones"
+git push 
+
+
+planeaciones por quincena 

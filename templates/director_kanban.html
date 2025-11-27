@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Tablero de Revisión</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <style>
+        /* Animación suave para el modal */
+        .modal { transition: opacity 0.25s ease; }
+        body.modal-active { overflow-x: hidden; overflow-y: hidden !important; }
+    </style>
+</head>
+<body class="bg-gray-100 font-sans h-screen flex flex-col">
+
+    <nav class="bg-gray-900 text-white p-4 shadow-lg flex justify-between items-center shrink-0">
+        <div class="flex items-center gap-2">
+            <span class="material-icons text-blue-400">view_kanban</span>
+            <span class="font-bold text-lg">Tablero de Revisión</span>
+        </div>
+        
+        <form action="/director/kanban" method="get" class="flex items-center gap-2">
+            <label class="text-xs text-gray-400">Periodo:</label>
+            <select name="periodo" onchange="this.form.submit()" class="bg-gray-800 text-sm border border-gray-600 rounded px-2 py-1 cursor-pointer">
+                {% for p in periodos_lista %}
+                <option value="{{ p }}" {% if p == periodo_actual %} selected {% endif %}>{{ p }}</option>
+                {% endfor %}
+            </select>
+        </form>
+
+        <a href="/dashboard" class="text-sm bg-gray-700 hover:bg-gray-600 px-3 py-1 rounded">Salir</a>
+    </nav>
+
+    <div class="flex-1 overflow-x-auto p-6">
+        <div class="flex gap-6 h-full min-w-[1000px]">
+
+            <div class="flex-1 flex flex-col bg-gray-200 rounded-xl shadow-inner border-t-4 border-red-500">
+                <div class="p-3 font-bold text-gray-700 bg-gray-300 rounded-t-lg flex justify-between">
+                    <span>⛔ PENDIENTES</span>
+                    <span class="bg-red-500 text-white text-xs px-2 py-1 rounded-full">{{ pendientes|length }}</span>
+                </div>
+                <div class="p-4 flex-1 overflow-y-auto space-y-3">
+                    {% for profe in pendientes %}
+                    <div class="bg-white p-4 rounded shadow border-l-4 border-red-400 opacity-75">
+                        <p class="font-bold text-gray-800 text-sm">{{ profe.nombre_completo }}</p>
+                        <p class="text-xs text-red-500 font-bold">Sin entrega</p>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="flex-1 flex flex-col bg-gray-200 rounded-xl shadow-inner border-t-4 border-blue-500">
+                <div class="p-3 font-bold text-gray-700 bg-gray-300 rounded-t-lg flex justify-between">
+                    <span>📥 POR REVISAR</span>
+                    <span class="bg-blue-500 text-white text-xs px-2 py-1 rounded-full">{{ revision|length }}</span>
+                </div>
+                <div class="p-4 flex-1 overflow-y-auto space-y-3">
+                    {% for plan in revision %}
+                    <div class="bg-white p-4 rounded-lg shadow-lg border-l-4 border-blue-500 hover:-translate-y-1 transition duration-200">
+                        <div class="flex justify-between items-start mb-1">
+                            <span class="text-xs font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded">{{ plan.nombre_archivo }}</span>
+                            <span class="text-xs text-gray-400">{{ plan.fecha_subida }}</span>
+                        </div>
+                        <p class="font-bold text-gray-800 mb-1">{{ plan.nombre_completo }}</p>
+                        <p class="text-sm text-gray-500 italic mb-4">"{{ plan.comentarios }}"</p>
+                        
+                        <button onclick="abrirModal('{{ plan.id_planeacion }}', '{{ plan.nombre_completo }}', '{{ plan.ruta_archivo }}')" 
+                           class="w-full bg-blue-600 text-white text-center py-2 rounded text-xs font-bold hover:bg-blue-700 flex items-center justify-center gap-2 shadow">
+                            <span class="material-icons text-sm">rate_review</span> Revisar y Aprobar
+                        </button>
+                    </div>
+                    {% else %}
+                    <p class="text-center text-gray-400 text-sm mt-10">Buzón limpio.</p>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="flex-1 flex flex-col bg-gray-200 rounded-xl shadow-inner border-t-4 border-green-500">
+                <div class="p-3 font-bold text-gray-700 bg-gray-300 rounded-t-lg flex justify-between">
+                    <span>✅ APROBADAS</span>
+                    <span class="bg-green-500 text-white text-xs px-2 py-1 rounded-full">{{ aprobados|length }}</span>
+                </div>
+                <div class="p-4 flex-1 overflow-y-auto space-y-3">
+                    {% for plan in aprobados %}
+                    <div class="bg-white p-3 rounded shadow border border-green-200 opacity-70 hover:opacity-100 transition">
+                        <div class="flex justify-between">
+                            <p class="font-bold text-gray-700 text-sm">{{ plan.nombre_completo }}</p>
+                            <a href="/archivos/{{ plan.ruta_archivo }}" target="_blank" class="text-xs text-blue-500 hover:underline">Ver PDF</a>
+                        </div>
+                        <p class="text-xs text-green-600 mt-1">Feedback: {{ plan.retroalimentacion }}</p>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <div id="modalRevision" class="modal opacity-0 pointer-events-none fixed w-full h-full top-0 left-0 flex items-center justify-center z-50">
+        
+        <div class="modal-overlay absolute w-full h-full bg-gray-900 opacity-50"></div>
+        
+        <div class="modal-container bg-white w-11/12 md:max-w-md mx-auto rounded shadow-lg z-50 overflow-y-auto transform scale-95 transition-transform duration-300">
+            
+            <div class="modal-content py-4 text-left px-6">
+                <div class="flex justify-between items-center pb-3 border-b">
+                    <p class="text-xl font-bold text-gray-800">Revisión de Planeación</p>
+                    <div class="modal-close cursor-pointer z-50" onclick="cerrarModal()">
+                        <span class="material-icons text-gray-500">close</span>
+                    </div>
+                </div>
+
+                <div class="my-5">
+                    <p class="text-sm text-gray-600 mb-2">Maestro: <span id="modalMaestro" class="font-bold text-gray-800">Nombre</span></p>
+                    
+                    <a id="modalLinkPDF" href="#" target="_blank" class="block w-full bg-gray-100 hover:bg-gray-200 text-blue-600 text-center py-2 rounded border border-gray-300 mb-4 flex items-center justify-center gap-2">
+                        <span class="material-icons text-sm">picture_as_pdf</span> Ver Documento
+                    </a>
+
+                    <form action="/director/aprobar-feedback" method="post">
+                        <input type="hidden" name="id_planeacion_modal" id="modalID">
+                        
+                        <label class="block text-gray-700 text-sm font-bold mb-2">Retroalimentación / Comentarios:</label>
+                        <textarea name="feedback" rows="3" class="w-full border p-2 rounded focus:outline-none focus:border-blue-500" placeholder="Ej. Excelente trabajo, aprobado."></textarea>
+                        
+                        <div class="flex justify-end pt-4 gap-2">
+                            <button type="button" onclick="cerrarModal()" class="px-4 py-2 bg-gray-300 rounded text-gray-700 hover:bg-gray-400 font-bold">Cancelar</button>
+                            <button type="submit" class="px-4 py-2 bg-blue-600 rounded text-white hover:bg-blue-700 font-bold shadow">Aprobar</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const modal = document.getElementById('modalRevision');
+        const modalContainer = modal.querySelector('.modal-container');
+        const inputID = document.getElementById('modalID');
+        const spanMaestro = document.getElementById('modalMaestro');
+        const linkPDF = document.getElementById('modalLinkPDF');
+
+        function abrirModal(id, nombre, ruta) {
+            // 1. Llenar los datos en el modal
+            inputID.value = id;
+            spanMaestro.innerText = nombre;
+            linkPDF.href = "/archivos/" + ruta;
+
+            // 2. Mostrar el modal (Quitar clases de oculto)
+            modal.classList.remove('opacity-0', 'pointer-events-none');
+            document.body.classList.add('modal-active');
+            
+            // Efecto Zoom
+            modalContainer.classList.remove('scale-95');
+            modalContainer.classList.add('scale-100');
+        }
+
+        function cerrarModal() {
+            // Ocultar modal
+            modal.classList.add('opacity-0', 'pointer-events-none');
+            document.body.classList.remove('modal-active');
+            modalContainer.classList.add('scale-95');
+            modalContainer.classList.remove('scale-100');
+        }
+    </script>
+
+</body>
+</html>
