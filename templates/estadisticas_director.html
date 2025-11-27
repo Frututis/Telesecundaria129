@@ -97,8 +97,8 @@
     const ctxGlobal = document.getElementById('graficaGlobal').getContext('2d');
     
     // Verificamos si hay datos antes de dibujar para evitar errores vacíos
-    const datosGlobales = {{ data_global | tojson }};
-    const etiquetasGlobales = {{ labels_global | tojson }};
+    const datosGlobales = {{ data_global | tojson | safe }};
+    const etiquetasGlobales = {{ labels_global | tojson | safe }};
 
     new Chart(ctxGlobal, {
         type: 'doughnut', 
@@ -115,8 +115,8 @@
     // 2. Configuración Gráfica Grupos (Barras)
     const ctxGrupos = document.getElementById('graficaGrupos').getContext('2d');
     
-    const datosGrupos = {{ data_grupo | tojson }};
-    const etiquetasGrupos = {{ labels_grupo | tojson }};
+    const datosGrupos = {{ data_grupo | tojson | safe }};
+    const etiquetasGrupos = {{ labels_grupo | tojson | safe }};
 
     new Chart(ctxGrupos, {
         type: 'bar',

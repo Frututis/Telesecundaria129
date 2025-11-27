@@ -6,7 +6,7 @@ from typing import Optional
 # Librerías de FastAPI y Web
 from fastapi import FastAPI, Request, Form, Response, UploadFile, File
 from fastapi.templating import Jinja2Templates
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 # Librería de Base de Datos y Errores
@@ -18,12 +18,14 @@ from mysql.connector import IntegrityError
 # ==========================================
 app = FastAPI()
 
-# ¡IMPORTANTE! Cambia esto cada año (ej. "2025-2026") para limpiar las vistas por defecto
+# ¡IMPORTANTE! Cambia esto cada año para limpiar las vistas por defecto
 CICLO_ACTUAL = "2024-2025"
 
 # Configuración de carpetas
-os.makedirs("uploads", exist_ok=True) # Crea carpeta para PDFs
-app.mount("/archivos", StaticFiles(directory="uploads"), name="archivos") # Hace públicos los PDFs
+os.makedirs("uploads", exist_ok=True) # Carpeta principal
+os.makedirs("uploads/alumnos", exist_ok=True) # Carpeta para expedientes
+app.mount("/archivos", StaticFiles(directory="uploads"), name="archivos") # Archivos públicos
+app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")   # Acceso directo a uploads
 templates = Jinja2Templates(directory="templates") # Carpeta de HTMLs
 
 # ==========================================
@@ -37,7 +39,7 @@ def get_db_connection():
         database="TelesecundariaDB"
     )
 
-# Helper: Saber qué ciclo quiere ver el Director (Cookie vs Default)
+# Helper: Saber qué ciclo quiere ver el Director
 def obtener_ciclo_activo(request: Request):
     return request.cookies.get("ciclo_seleccionado", CICLO_ACTUAL)
 
@@ -67,7 +69,7 @@ async def login_submit(request: Request, response: Response, username: str = For
         if user:
             redirect = RedirectResponse(url="/dashboard", status_code=303)
             
-            # Validar si es primer ingreso (Cambio obligatorio)
+            # Validar si es primer ingreso
             if user['requiere_cambio'] == 1:
                 redirect = RedirectResponse(url="/primer-ingreso", status_code=303)
 
@@ -84,6 +86,7 @@ async def logout(response: Response):
     redirect = RedirectResponse(url="/")
     redirect.delete_cookie("usuario_logueado")
     redirect.delete_cookie("rol_usuario")
+    redirect.delete_cookie("ciclo_seleccionado")
     return redirect
 
 # --- CAMBIO DE CONTRASEÑA OBLIGATORIO ---
@@ -110,7 +113,7 @@ async def guardar_nuevo_password(request: Request, pass1: str = Form(...), pass2
     return RedirectResponse(url="/dashboard", status_code=303)
 
 # ==========================================
-# 4. DASHBOARD PRINCIPAL (ROUTER)
+# 4. DASHBOARD PRINCIPAL (ROUTER MAESTRO/DIRECTOR)
 # ==========================================
 
 @app.post("/director/cambiar-ciclo")
@@ -120,7 +123,11 @@ async def cambiar_ciclo_escolar(request: Request, nuevo_ciclo: str = Form(...)):
     return response
 
 @app.get("/dashboard", response_class=HTMLResponse)
-async def dashboard(request: Request):
+async def dashboard(
+    request: Request, 
+    fecha: str = None,          # Filtro Asistencia
+    periodo_filtro: str = None  # Filtro Planeaciones
+):
     usuario = request.cookies.get("usuario_logueado")
     rol = request.cookies.get("rol_usuario")
     if not usuario: return RedirectResponse(url="/")
@@ -128,18 +135,24 @@ async def dashboard(request: Request):
     conn = get_db_connection()
     cursor = conn.cursor(dictionary=True)
 
-    archivo_html = "" 
-    lista_planeaciones = []
+    # Fecha por defecto para asistencia: HOY
+    fecha_seleccionada = fecha if fecha else datetime.now().strftime('%Y-%m-%d')
     
-    # Lógica del Ciclo Escolar
-    ciclo_visualizar = obtener_ciclo_activo(request)
-    cursor.execute("SELECT DISTINCT ciclo_escolar FROM planeaciones ORDER BY ciclo_escolar DESC")
-    ciclos_disponibles = [fila['ciclo_escolar'] for fila in cursor.fetchall()]
-    if CICLO_ACTUAL not in ciclos_disponibles: ciclos_disponibles.insert(0, CICLO_ACTUAL)
+    archivo_html = "" 
+    # Contexto base
+    contexto = {
+        "request": request, "usuario": usuario, "rol": rol,
+        "ciclo_actual": CICLO_ACTUAL,
+        "fecha_seleccionada": fecha_seleccionada
+    }
 
     try:
+        # --- LÓGICA DIRECTOR ---
         if rol == 'DIRECTOR':
             archivo_html = "dashboard_director.html"
+            ciclo_visualizar = obtener_ciclo_activo(request)
+            
+            # Planeaciones Recientes del Ciclo
             query = """
             SELECT p.*, u.nombre_completo 
             FROM planeaciones p 
@@ -148,17 +161,63 @@ async def dashboard(request: Request):
             ORDER BY p.fecha_subida DESC LIMIT 10
             """
             cursor.execute(query, (ciclo_visualizar,))
-            lista_planeaciones = cursor.fetchall()
+            contexto["planeaciones"] = cursor.fetchall()
             
+            # Lista de Ciclos para el Selector
+            cursor.execute("SELECT DISTINCT ciclo_escolar FROM planeaciones ORDER BY ciclo_escolar DESC")
+            ciclos = [fila['ciclo_escolar'] for fila in cursor.fetchall()]
+            if CICLO_ACTUAL not in ciclos: ciclos.insert(0, CICLO_ACTUAL)
+            
+            contexto["lista_ciclos"] = ciclos
+            contexto["ciclo_actual"] = ciclo_visualizar
+
+        # --- LÓGICA MAESTRO ---
         elif rol == 'MAESTRO':
             archivo_html = "dashboard_maestro.html"
             cursor.execute("SELECT id_usuario FROM users WHERE usuario = %s", (usuario,))
             user_data = cursor.fetchone()
-            if user_data:
-                id_maestro = user_data['id_usuario']
-                query = "SELECT * FROM planeaciones WHERE id_maestro = %s AND ciclo_escolar = %s ORDER BY fecha_subida DESC"
-                cursor.execute(query, (id_maestro, CICLO_ACTUAL))
-                lista_planeaciones = cursor.fetchall()
+            id_maestro = user_data['id_usuario']
+
+            # 1. Asistencia del Día Seleccionado
+            query_alumnos = """
+            SELECT al.id_alumno, al.nombre_completo, al.curp, 
+                   ast.hora_entrada, ast.estado as estado_asistencia, ast.id_asistencia
+            FROM grupos g
+            JOIN alumnos al ON g.id_grupo = al.id_grupo
+            LEFT JOIN asistencia ast ON al.id_alumno = ast.id_alumno AND ast.fecha = %s 
+            WHERE g.id_maestro_encargado = %s
+            ORDER BY al.nombre_completo
+            """
+            cursor.execute(query_alumnos, (fecha_seleccionada, id_maestro))
+            contexto["alumnos"] = cursor.fetchall()
+
+            # 2. Filtro de Periodos (Dropdown)
+            cursor.execute("""
+                SELECT DISTINCT periodo FROM planeaciones 
+                WHERE id_maestro = %s AND ciclo_escolar = %s 
+                ORDER BY periodo DESC
+            """, (id_maestro, CICLO_ACTUAL))
+            lista_periodos_usados = [row['periodo'] for row in cursor.fetchall()]
+
+            # 3. Planeaciones Filtradas
+            if periodo_filtro and periodo_filtro != "TODOS":
+                query_planes = """
+                SELECT * FROM planeaciones 
+                WHERE id_maestro = %s AND ciclo_escolar = %s AND periodo = %s 
+                ORDER BY fecha_subida DESC
+                """
+                cursor.execute(query_planes, (id_maestro, CICLO_ACTUAL, periodo_filtro))
+            else:
+                query_planes = """
+                SELECT * FROM planeaciones 
+                WHERE id_maestro = %s AND ciclo_escolar = %s 
+                ORDER BY fecha_subida DESC LIMIT 10
+                """
+                cursor.execute(query_planes, (id_maestro, CICLO_ACTUAL))
+            
+            contexto["planeaciones"] = cursor.fetchall()
+            contexto["mis_periodos"] = lista_periodos_usados
+            contexto["periodo_seleccionado"] = periodo_filtro or ""
 
     except Exception as e:
         print(f"Error dashboard: {e}")
@@ -166,14 +225,10 @@ async def dashboard(request: Request):
         cursor.close()
         conn.close()
 
-    return templates.TemplateResponse(archivo_html, {
-        "request": request, "usuario": usuario, "rol": rol,
-        "planeaciones": lista_planeaciones,
-        "ciclo_actual": ciclo_visualizar, "lista_ciclos": ciclos_disponibles
-    })
+    return templates.TemplateResponse(archivo_html, contexto)
 
 # ==========================================
-# 5. MÓDULO DE PLANEACIONES (KANBAN Y SUBIDA)
+# 5. MÓDULO MAESTRO: OPERACIONES (SUBIR / JUSTIFICAR)
 # ==========================================
 
 @app.post("/subir-planeacion")
@@ -187,16 +242,13 @@ async def subir_archivo(
     if not usuario: return RedirectResponse(url="/")
     
     try:
-        # A. Guardar archivo físico
         nombre_seguro = f"{datetime.now().strftime('%Y%m%d%H%M%S')}_{archivo.filename}"
         ubicacion_archivo = f"uploads/{nombre_seguro}"
         with open(ubicacion_archivo, "wb") as buffer:
             shutil.copyfileobj(archivo.file, buffer)
             
-        # B. Guardar en BD con CICLO y PERIODO
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
-        
         cursor.execute("SELECT id_usuario FROM users WHERE usuario = %s", (usuario,))
         user_data = cursor.fetchone()
         
@@ -217,7 +269,32 @@ async def subir_archivo(
         print(f"Error subiendo: {e}")
         return HTMLResponse("Error interno", status_code=500)
 
-# VISTA DIRECTOR: KANBAN (TABLERO VISTOSO)
+@app.get("/maestro/justificar/{id_alumno}")
+async def justificar_alumno(id_alumno: int, fecha: str):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    # Busca si existe registro ese día
+    cursor.execute("SELECT id_asistencia FROM asistencia WHERE id_alumno = %s AND fecha = %s", (id_alumno, fecha))
+    existe = cursor.fetchone()
+    
+    if existe:
+        cursor.execute("UPDATE asistencia SET estado = 'JUSTIFICADO' WHERE id_asistencia = %s", (existe[0],))
+    else:
+        # Crea registro justificado
+        cursor.execute("""
+            INSERT INTO asistencia (id_alumno, fecha, hora_entrada, estado) 
+            VALUES (%s, %s, '00:00:00', 'JUSTIFICADO')
+        """, (id_alumno, fecha))
+        
+    conn.commit()
+    conn.close()
+    return RedirectResponse(url=f"/dashboard?fecha={fecha}", status_code=303)
+
+# ==========================================
+# 6. MÓDULO DIRECTOR: KANBAN DE REVISIÓN
+# ==========================================
+
 @app.get("/director/kanban", response_class=HTMLResponse)
 async def ver_kanban(request: Request, periodo: str = "SEP-Q1"): 
     usuario = request.cookies.get("usuario_logueado")
@@ -239,10 +316,10 @@ async def ver_kanban(request: Request, periodo: str = "SEP-Q1"):
     cursor.execute(query, (ciclo_visualizar, periodo))
     entregas = cursor.fetchall()
 
+    # Clasificación Kanban
     columna_pendientes = []
     columna_revision = []
     columna_aprobados = []
-
     ids_entregaron = [e['id_usuario'] for e in entregas]
 
     for m in todos_maestros:
@@ -263,71 +340,17 @@ async def ver_kanban(request: Request, periodo: str = "SEP-Q1"):
         "periodos_lista": ["SEP-Q1", "SEP-Q2", "OCT-Q1", "OCT-Q2", "NOV-Q1", "NOV-Q2"] 
     })
 
-# ACCIÓN: APROBAR CON COMENTARIOS (POST)
 @app.post("/director/aprobar-feedback")
-async def aprobar_con_feedback(
-    request: Request,
-    id_planeacion_modal: int = Form(...), # El ID viene oculto en el modal
-    feedback: str = Form(...)             # El texto que escribe el director
-):
+async def aprobar_con_feedback(request: Request, id_planeacion_modal: int = Form(...), feedback: str = Form(...)):
     conn = get_db_connection()
     cursor = conn.cursor()
-    
-    # Actualizamos el estado APROBADO y guardamos la RETROALIMENTACIÓN
-    query = """
-    UPDATE planeaciones 
-    SET estado = 'APROBADO', retroalimentacion = %s 
-    WHERE id_planeacion = %s
-    """
-    cursor.execute(query, (feedback, id_planeacion_modal))
+    cursor.execute("UPDATE planeaciones SET estado = 'APROBADO', retroalimentacion = %s WHERE id_planeacion = %s", (feedback, id_planeacion_modal))
     conn.commit()
     conn.close()
-
-    # Recargamos el tablero
     return RedirectResponse(url="/director/kanban", status_code=303)
 
-# VISTA DIRECTOR: LISTA CLÁSICA (POR SI ACASO)
-@app.get("/director/maestros", response_class=HTMLResponse)
-async def lista_maestros(request: Request):
-    usuario = request.cookies.get("usuario_logueado")
-    if not usuario: return RedirectResponse(url="/")
-    
-    ciclo_visualizar = obtener_ciclo_activo(request)
-    conn = get_db_connection()
-    cursor = conn.cursor(dictionary=True)
-    query = """
-    SELECT u.id_usuario, u.nombre_completo, 
-           (SELECT COUNT(*) FROM planeaciones p WHERE p.id_maestro = u.id_usuario AND p.ciclo_escolar = %s) as total_archivos
-    FROM users u WHERE u.rol = 'MAESTRO'
-    """
-    cursor.execute(query, (ciclo_visualizar,))
-    maestros = cursor.fetchall()
-    conn.close()
-    return templates.TemplateResponse("director_lista_maestros.html", {"request": request, "lista_maestros": maestros})
-
-# VISTA DIRECTOR: DETALLE ARCHIVOS MAESTRO
-@app.get("/director/ver-planeaciones/{id_maestro}", response_class=HTMLResponse)
-async def detalle_planeaciones_maestro(request: Request, id_maestro: int):
-    usuario = request.cookies.get("usuario_logueado")
-    if not usuario: return RedirectResponse(url="/")
-
-    ciclo_visualizar = obtener_ciclo_activo(request)
-    conn = get_db_connection()
-    cursor = conn.cursor(dictionary=True)
-    cursor.execute("SELECT nombre_completo FROM users WHERE id_usuario = %s", (id_maestro,))
-    dato = cursor.fetchone()
-    nombre = dato['nombre_completo'] if dato else "Maestro"
-
-    query = "SELECT * FROM planeaciones WHERE id_maestro = %s AND ciclo_escolar = %s ORDER BY fecha_subida DESC"
-    cursor.execute(query, (id_maestro, ciclo_visualizar))
-    archivos = cursor.fetchall()
-    conn.close()
-    return templates.TemplateResponse("director_detalle_planeaciones.html", {
-        "request": request, "nombre_maestro": nombre, "planeaciones": archivos
-    })
-
 # ==========================================
-# 6. MÓDULO DE ASISTENCIA (ESTADÍSTICAS)
+# 7. MÓDULO DIRECTOR: ESTADÍSTICAS Y ASISTENCIA
 # ==========================================
 
 @app.get("/ver-asistencias", response_class=HTMLResponse)
@@ -339,11 +362,8 @@ async def ver_asistencias(request: Request):
     cursor = conn.cursor(dictionary=True)
     query = """
     SELECT a.hora_entrada, a.estado, al.nombre_completo, g.grado, g.grupo
-    FROM asistencia a
-    JOIN alumnos al ON a.id_alumno = al.id_alumno
-    JOIN grupos g ON al.id_grupo = g.id_grupo
-    WHERE a.fecha = CURDATE()
-    ORDER BY a.hora_entrada DESC
+    FROM asistencia a JOIN alumnos al ON a.id_alumno = al.id_alumno JOIN grupos g ON al.id_grupo = g.id_grupo
+    WHERE a.fecha = CURDATE() ORDER BY a.hora_entrada DESC
     """
     cursor.execute(query)
     resultados = cursor.fetchall()
@@ -360,13 +380,12 @@ async def estadisticas_asistencia(request: Request):
     conn = get_db_connection()
     cursor = conn.cursor(dictionary=True)
 
-    # 1. GLOBAL (Pastel)
+    # Datos para gráficas
     cursor.execute("SELECT estado, COUNT(*) as total FROM asistencia GROUP BY estado")
     datos_globales = cursor.fetchall()
     labels_global = [d['estado'] for d in datos_globales]
     data_global = [d['total'] for d in datos_globales]
 
-    # 2. GRUPOS (Barras)
     query_grupos = """
     SELECT CONCAT(g.grado, '° ', g.grupo) as nombre_grupo, COUNT(*) as total_faltas
     FROM asistencia a JOIN alumnos al ON a.id_alumno = al.id_alumno JOIN grupos g ON al.id_grupo = g.id_grupo
@@ -377,7 +396,7 @@ async def estadisticas_asistencia(request: Request):
     labels_grupo = [d['nombre_grupo'] for d in datos_grupos]
     data_grupo = [d['total_faltas'] for d in datos_grupos]
 
-    # 3. TOPS
+    # Tops alumnos
     cursor.execute("""
         SELECT al.nombre_completo, CONCAT(g.grado, '° ', g.grupo) as grupo, COUNT(*) as cantidad
         FROM asistencia a JOIN alumnos al ON a.id_alumno = al.id_alumno JOIN grupos g ON al.id_grupo = g.id_grupo
@@ -394,14 +413,12 @@ async def estadisticas_asistencia(request: Request):
     conn.close()
 
     return templates.TemplateResponse("estadisticas_director.html", {
-        "request": request,
-        "labels_global": labels_global, "data_global": data_global,
-        "labels_grupo": labels_grupo, "data_grupo": data_grupo,
-        "top_faltas": top_faltas, "top_retardos": top_retardos
+        "request": request, "labels_global": labels_global, "data_global": data_global,
+        "labels_grupo": labels_grupo, "data_grupo": data_grupo, "top_faltas": top_faltas, "top_retardos": top_retardos
     })
 
 # ==========================================
-# 7. MÓDULO DE GESTIÓN DE PERSONAL
+# 8. MÓDULO DIRECTOR: GESTIÓN DE PERSONAL
 # ==========================================
 
 @app.get("/director/asignacion", response_class=HTMLResponse)
@@ -471,8 +488,157 @@ async def crear_maestro(request: Request, nombre: str = Form(...), usuario: str 
         conn.close()
 
     return templates.TemplateResponse("director_nuevo_maestro.html", {
-        "request": request,
-        "mensaje": mensaje if tipo != "error" else None,
-        "error": mensaje if tipo == "error" else None,
-        "tipo_alerta": tipo
+        "request": request, "mensaje": mensaje if tipo != "error" else None, "error": mensaje if tipo == "error" else None, "tipo_alerta": tipo
+    })
+
+# ==========================================
+# 9. MÓDULO EXPEDIENTES (ALUMNOS Y DOCUMENTOS)
+# ==========================================
+
+# MENÚ PRINCIPAL EXPEDIENTES
+@app.get("/director/expedientes", response_class=HTMLResponse)
+async def menu_expedientes(request: Request):
+    usuario = request.cookies.get("usuario_logueado")
+    if not usuario: return RedirectResponse(url="/")
+    
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+    query = """
+    SELECT a.id_alumno, a.nombre_completo, a.curp, g.grado, g.grupo
+    FROM alumnos a JOIN grupos g ON a.id_grupo = g.id_grupo
+    ORDER BY g.grado, g.grupo, a.nombre_completo
+    """
+    cursor.execute(query)
+    alumnos = cursor.fetchall()
+    conn.close()
+    return templates.TemplateResponse("director_expedientes_menu.html", {"request": request, "alumnos": alumnos})
+
+# VISTA AGREGAR ALUMNO
+@app.get("/director/agregar-alumno", response_class=HTMLResponse)
+async def vista_agregar_alumno(request: Request):
+    usuario = request.cookies.get("usuario_logueado")
+    if not usuario: return RedirectResponse(url="/")
+    
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+    cursor.execute("SELECT id_grupo, grado, grupo FROM grupos ORDER BY grado, grupo")
+    grupos = cursor.fetchall()
+    conn.close()
+    return templates.TemplateResponse("director_agregar_alumno.html", {"request": request, "grupos": grupos})
+
+# GUARDAR ALUMNO (CON CONTACTO)
+@app.post("/director/guardar-alumno")
+async def guardar_alumno(request: Request, nombre: str = Form(...), curp: str = Form(...), id_grupo: int = Form(...), contacto: str = Form(...), telefono: str = Form(...)):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        query = "INSERT INTO alumnos (nombre_completo, curp, id_grupo, nombre_contacto, telefono_contacto) VALUES (%s, %s, %s, %s, %s)"
+        cursor.execute(query, (nombre, curp, id_grupo, contacto, telefono))
+        conn.commit()
+        mensaje = "Alumno inscrito correctamente"
+    except Exception as e:
+        mensaje = f"Error: {e}"
+    finally:
+        conn.close()
+    return RedirectResponse(url="/director/agregar-alumno?msg=" + mensaje, status_code=303)
+
+# API BUSCADOR (JSON)
+@app.get("/api/buscar-alumno")
+async def buscar_alumno_api(q: str = ""):
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+    query = """
+    SELECT a.id_alumno, a.nombre_completo, a.curp, g.grado, g.grupo
+    FROM alumnos a JOIN grupos g ON a.id_grupo = g.id_grupo
+    WHERE a.nombre_completo LIKE %s LIMIT 5
+    """
+    cursor.execute(query, (f"%{q}%",))
+    resultados = cursor.fetchall()
+    conn.close()
+    return resultados
+
+# PERFIL INTEGRAL DEL ALUMNO (TABS)
+@app.get("/director/perfil-alumno/{id_alumno}", response_class=HTMLResponse)
+async def perfil_alumno(request: Request, id_alumno: int):
+    usuario = request.cookies.get("usuario_logueado")
+    if not usuario: return RedirectResponse(url="/")
+
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+    cursor.execute("SELECT a.*, g.grado, g.grupo FROM alumnos a JOIN grupos g ON a.id_grupo = g.id_grupo WHERE a.id_alumno = %s", (id_alumno,))
+    alumno = cursor.fetchone()
+    
+    cursor.execute("SELECT * FROM documentos_alumnos WHERE id_alumno = %s ORDER BY categoria", (id_alumno,))
+    documentos = cursor.fetchall()
+    
+    cursor.execute("SELECT * FROM historial_tramites WHERE id_alumno = %s ORDER BY fecha DESC", (id_alumno,))
+    historial = cursor.fetchall()
+    conn.close()
+
+    return templates.TemplateResponse("director_perfil_alumno.html", {
+        "request": request, "alumno": alumno, "documentos": documentos, "historial": historial, "usuario_logueado": usuario
+    })
+
+# ACTUALIZAR DATOS ALUMNO
+@app.post("/director/actualizar-datos-alumno")
+async def actualizar_datos_alumno(request: Request, id_alumno: int = Form(...), nombre: str = Form(...), curp: str = Form(...), contacto: str = Form(...), telefono: str = Form(...)):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("UPDATE alumnos SET nombre_completo = %s, curp = %s, nombre_contacto = %s, telefono_contacto = %s WHERE id_alumno = %s", (nombre, curp, contacto, telefono, id_alumno))
+    conn.commit()
+    conn.close()
+    return RedirectResponse(url=f"/director/perfil-alumno/{id_alumno}?msg=Datos actualizados", status_code=303)
+
+# SUBIR DOCUMENTO A LA BÓVEDA
+@app.post("/director/subir-documento-alumno")
+async def subir_documento_alumno(request: Request, id_alumno: int = Form(...), categoria: str = Form(...), archivo: UploadFile = File(...)):
+    try:
+        carpeta_alumno = f"uploads/alumnos/{id_alumno}"
+        os.makedirs(carpeta_alumno, exist_ok=True)
+        nombre_limpio = f"{categoria}_{archivo.filename.replace(' ', '_')}"
+        ruta_guardado = f"{carpeta_alumno}/{nombre_limpio}"
+        
+        with open(ruta_guardado, "wb") as buffer:
+            shutil.copyfileobj(archivo.file, buffer)
+
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("INSERT INTO documentos_alumnos (id_alumno, categoria, nombre_archivo, ruta_archivo, estado) VALUES (%s, %s, %s, %s, 'PENDIENTE')", (id_alumno, categoria, archivo.filename, ruta_guardado))
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        print(f"Error subiendo: {e}")
+    return RedirectResponse(url=f"/director/perfil-alumno/{id_alumno}", status_code=303)
+
+# GENERADOR DE DOCUMENTOS (PDF)
+@app.post("/director/imprimir-documento-avanzado")
+async def imprimir_avanzado(
+    request: Request,
+    id_alumno: int = Form(...),
+    tipo_documento: str = Form(...), 
+    nota1: str = Form(None), nota2: str = Form(None), nota3: str = Form(None), promedio_final: str = Form(None)
+):
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+    
+    # Datos alumno
+    cursor.execute("SELECT a.nombre_completo, a.curp, g.grado, g.grupo FROM alumnos a JOIN grupos g ON a.id_grupo = g.id_grupo WHERE a.id_alumno = %s", (id_alumno,))
+    alumno = cursor.fetchone()
+    
+    # Registrar en historial
+    usuario = request.cookies.get("usuario_logueado")
+    cursor.execute("INSERT INTO historial_tramites (id_alumno, tramite, usuario_responsable) VALUES (%s, %s, %s)", (id_alumno, f"Generación de {tipo_documento}", usuario))
+    conn.commit()
+    conn.close()
+
+    # Fecha bonita
+    meses = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
+    hoy = datetime.now()
+    fecha_texto = f"{hoy.day} de {meses[hoy.month-1]} de {hoy.year}"
+
+    plantilla = "plantilla_constancia.html" if tipo_documento == 'CONSTANCIA' else "plantilla_kardex.html"
+    
+    return templates.TemplateResponse(plantilla, {
+        "request": request, "alumno": alumno, "fecha": fecha_texto,
+        "n1": nota1, "n2": nota2, "n3": nota3, "pf": promedio_final
     })

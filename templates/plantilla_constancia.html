@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Constancia de Estudios - {{ alumno.nombre_completo }}</title>
+    <style>
+        body { font-family: 'Times New Roman', serif; padding: 40px; max-width: 800px; margin: 0 auto; line-height: 1.6; }
+        .header { text-align: center; margin-bottom: 50px; }
+        .logo { width: 100px; height: auto; margin-bottom: 10px; }
+        .titulo { font-size: 24px; font-weight: bold; text-transform: uppercase; margin: 20px 0; }
+        .cuerpo { font-size: 18px; text-align: justify; margin-bottom: 60px; }
+        .firma { text-align: center; margin-top: 100px; }
+        .raya-firma { border-top: 1px solid black; width: 300px; margin: 0 auto 10px auto; }
+        
+        /* Ocultar botón al imprimir */
+        @media print {
+            .no-print { display: none; }
+            body { padding: 0; margin: 2cm; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="no-print" style="text-align: right; margin-bottom: 20px;">
+        <button onclick="window.print()" style="background: #2563EB; color: white; border: none; padding: 10px 20px; font-size: 16px; cursor: pointer; border-radius: 5px;">
+            🖨️ Imprimir / Guardar como PDF
+        </button>
+    </div>
+
+    <div class="header">
+        <p style="font-weight: bold; font-size: 14px;">SECRETARÍA DE EDUCACIÓN PÚBLICA</p>
+        <p style="font-size: 12px;">TELESECUNDARIA "NOMBRE DE TU ESCUELA"</p>
+        <p style="font-size: 12px;">CLAVE: 11ETV0000X</p>
+        
+        <div class="titulo">CONSTANCIA DE ESTUDIOS</div>
+    </div>
+
+    <div class="cuerpo">
+        <p>A QUIEN CORRESPONDA:</p>
+        
+        <p>
+            El que suscribe, Director de la Telesecundaria, por medio de la presente HACE CONSTAR que el (la) alumno(a):
+        </p>
+
+        <p style="text-align: center; font-size: 22px; font-weight: bold; margin: 30px 0;">
+            {{ alumno.nombre_completo }}
+        </p>
+
+        <p>
+            Se encuentra legalmente inscrito(a) en el <strong>{{ alumno.grado }}° Grado, Grupo "{{ alumno.grupo }}"</strong> 
+            del presente ciclo escolar, con clave CURP <strong>{{ alumno.curp }}</strong>.
+        </p>
+
+        <p>
+            Se extiende la presente a petición del interesado para los fines legales que a él convengan, 
+            en la ciudad de [Tu Ciudad], a los <strong>{{ fecha }}</strong>.
+        </p>
+    </div>
+
+    <div class="firma">
+        <div class="raya-firma"></div>
+        <p><strong>PROFR. NOMBRE DEL DIRECTOR</strong></p>
+        <p>DIRECTOR DEL PLANTEL</p>
+    </div>
+
+</body>
+</html>

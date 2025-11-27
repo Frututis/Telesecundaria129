@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Inscribir Alumno</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+</head>
+<body class="bg-gray-100 font-sans">
+
+    <nav class="bg-gray-900 text-white p-4 shadow-lg flex justify-between items-center sticky top-0 z-50">
+        <div class="flex items-center gap-2">
+            <span class="material-icons text-green-400">person_add_alt</span>
+            <span class="font-bold text-lg">Inscripción de Alumnos</span>
+        </div>
+        <a href="/director/expedientes" class="text-sm bg-gray-700 hover:bg-gray-600 px-3 py-1 rounded transition flex items-center gap-1">
+            <span class="material-icons text-sm">arrow_back</span>
+            Volver a Directorio
+        </a>
+    </nav>
+
+    <div class="container mx-auto p-8 flex justify-center">
+        
+        <div class="bg-white p-8 rounded-xl shadow-lg w-full max-w-2xl border-t-4 border-green-500">
+            
+            <div class="mb-6 border-b border-gray-100 pb-4">
+                <h1 class="text-2xl font-bold text-gray-800">Nuevo Estudiante</h1>
+                <p class="text-gray-500 text-sm">Complete el formulario para dar de alta al alumno en el ciclo escolar actual.</p>
+            </div>
+
+            <script>
+                // Este script lee la URL para ver si Python mandó un mensaje "?msg=..."
+                const urlParams = new URLSearchParams(window.location.search);
+                const mensaje = urlParams.get('msg');
+                
+                if (mensaje) {
+                    document.write(`
+                        <div class="bg-green-100 border-l-4 border-green-500 text-green-700 p-4 mb-6 rounded shadow-sm flex items-center gap-3 animate-fade-in-down">
+                            <div class="bg-green-200 p-2 rounded-full">
+                                <span class="material-icons text-green-600">check</span>
+                            </div>
+                            <div>
+                                <p class="font-bold">¡Registro Exitoso!</p>
+                                <p class="text-sm">${mensaje}</p>
+                            </div>
+                        </div>
+                    `);
+                    // Limpiamos la URL para que el mensaje no salga si recargas la página
+                    window.history.replaceState({}, document.title, window.location.pathname);
+                }
+            </script>
+
+            <form id="formAlumno" action="/director/guardar-alumno" method="post" autocomplete="off">
+                
+                <div class="bg-gray-50 p-4 rounded-lg border border-gray-200 mb-6">
+                    <h3 class="text-gray-500 font-bold text-xs uppercase mb-3 flex items-center gap-1">
+                        <span class="material-icons text-xs">school</span> Información del Alumno
+                    </h3>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="md:col-span-2">
+                            <label class="block text-gray-700 text-sm font-bold mb-1">Nombre Completo</label>
+                            <input name="nombre" type="text" placeholder="Ej. PÉREZ LÓPEZ JUAN" required 
+                                   class="w-full border border-gray-300 p-2.5 rounded-lg focus:outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500 uppercase transition">
+                        </div>
+
+                        <div>
+                            <label class="block text-gray-700 text-sm font-bold mb-1">CURP</label>
+                            <input name="curp" type="text" placeholder="18 Caracteres" required maxlength="18" minlength="18"
+                                   class="w-full border border-gray-300 p-2.5 rounded-lg focus:outline-none focus:border-green-500 uppercase font-mono transition">
+                        </div>
+
+                        <div>
+                            <label class="block text-gray-700 text-sm font-bold mb-1">Asignar a Grupo</label>
+                            <div class="relative">
+                                <select name="id_grupo" required 
+                                        class="w-full border border-gray-300 p-2.5 rounded-lg focus:outline-none focus:border-green-500 bg-white appearance-none cursor-pointer">
+                                    <option value="" disabled selected>-- Seleccionar --</option>
+                                    
+                                    {% for grupo in grupos %}
+                                    <option value="{{ grupo.id_grupo }}">
+                                        {{ grupo.grado }}° "{{ grupo.grupo }}"
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                                <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
+                                    <span class="material-icons text-sm">expand_more</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-gray-50 p-4 rounded-lg border border-gray-200 mb-8">
+                    <h3 class="text-gray-500 font-bold text-xs uppercase mb-3 flex items-center gap-1">
+                        <span class="material-icons text-xs">contact_phone</span> Contacto de Emergencia / Tutor
+                    </h3>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="md:col-span-2">
+                            <label class="block text-gray-700 text-sm font-bold mb-1">Nombre del Tutor</label>
+                            <div class="relative">
+                                <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400">
+                                    <span class="material-icons text-sm">person</span>
+                                </span>
+                                <input name="contacto" type="text" placeholder="Nombre del Padre, Madre o Tutor" required 
+                                       class="w-full pl-10 border border-gray-300 p-2.5 rounded-lg focus:outline-none focus:border-green-500 transition">
+                            </div>
+                        </div>
+
+                        <div class="md:col-span-2">
+                            <label class="block text-gray-700 text-sm font-bold mb-1">Teléfono (Móvil/WhatsApp)</label>
+                            <div class="relative">
+                                <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400">
+                                    <span class="material-icons text-sm">phone</span>
+                                </span>
+                                <input name="telefono" type="tel" placeholder="Ej. 55 1234 5678" required maxlength="15" 
+                                       class="w-full pl-10 border border-gray-300 p-2.5 rounded-lg focus:outline-none focus:border-green-500 transition">
+                            </div>
+                            <p class="text-xs text-gray-400 mt-1">Este número se usará para notificaciones de asistencia.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex justify-end">
+                    <button type="submit" id="btnGuardar" 
+                            class="w-full md:w-auto bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-8 rounded-lg shadow-lg transition transform hover:-translate-y-1 flex items-center justify-center gap-2">
+                        <span class="material-icons">save</span>
+                        <span>Guardar Expediente</span>
+                    </button>
+                </div>
+
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const form = document.getElementById('formAlumno');
+        const btn = document.getElementById('btnGuardar');
+
+        form.addEventListener('submit', function() {
+            // Cambiamos el botón para indicar que está trabajando
+            btn.innerHTML = `
+                <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Guardando...
+            `;
+            // Desactivamos clics
+            btn.classList.add('opacity-75', 'cursor-not-allowed', 'pointer-events-none');
+        });
+    </script>
+
+</body>
+</html>

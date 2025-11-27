@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Expediente Digital</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <script src="//unpkg.com/alpinejs" defer></script>
+</head>
+<body class="bg-gray-100 font-sans" x-data="{ tab: 'documentos' }">
+
+    <nav class="bg-gray-900 text-white p-4 shadow-lg flex justify-between items-center">
+        <div class="flex items-center gap-2 font-bold text-lg">
+            <span class="material-icons text-blue-400">folder_shared</span> 
+            Expediente: {{ alumno.nombre_completo }}
+        </div>
+        <a href="/director/expedientes" class="bg-gray-700 hover:bg-gray-600 px-3 py-1 rounded text-sm">Volver</a>
+    </nav>
+
+    <div class="bg-white shadow p-6 mb-6">
+        <div class="container mx-auto flex items-center gap-6">
+            <div class="h-20 w-20 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 font-bold text-3xl">
+                {{ alumno.nombre_completo[:1] }}
+            </div>
+            <div>
+                <h1 class="text-2xl font-bold text-gray-800">{{ alumno.nombre_completo }}</h1>
+                <p class="text-gray-500">CURP: {{ alumno.curp }} | Grado: {{ alumno.grado }}° "{{ alumno.grupo }}"</p>
+                <div class="mt-2 flex gap-2">
+                    <span class="bg-green-100 text-green-800 text-xs px-2 py-1 rounded font-bold">ACTIVO</span>
+                    <span class="bg-gray-100 text-gray-800 text-xs px-2 py-1 rounded">ID: {{ alumno.id_alumno }}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container mx-auto px-6">
+        
+        <div class="flex border-b border-gray-300 mb-6">
+            <button @click="tab = 'documentos'" 
+                    :class="tab === 'documentos' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'"
+                    class="py-2 px-4 border-b-2 font-medium transition flex items-center gap-2">
+                <span class="material-icons text-sm">inventory_2</span> Bóveda Digital
+            </button>
+            <button @click="tab = 'tramites'" 
+                    :class="tab === 'tramites' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'"
+                    class="py-2 px-4 border-b-2 font-medium transition flex items-center gap-2">
+                <span class="material-icons text-sm">history_edu</span> Historial y Trámites
+            </button>
+        </div>
+
+        <div x-show="tab === 'documentos'" class="grid grid-cols-1 md:grid-cols-3 gap-8">
+            
+            <div class="bg-white p-6 rounded-xl shadow-lg border-t-4 border-blue-500 h-fit">
+                <h3 class="font-bold text-gray-700 mb-4 flex items-center gap-2">
+                    <span class="material-icons">upload_file</span> Nuevo Documento
+                </h3>
+                
+                <form action="/director/subir-documento-alumno" method="post" enctype="multipart/form-data">
+                    <input type="hidden" name="id_alumno" value="{{ alumno.id_alumno }}">
+                    
+                    <div class="mb-4">
+                        <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Categoría</label>
+                        <select name="categoria" class="w-full border p-2 rounded bg-gray-50 cursor-pointer">
+                            <option value="IDENTIDAD">📂 Identidad (Acta, CURP)</option>
+                            <option value="MEDICO">🩺 Médico (Certificados)</option>
+                            <option value="ACADEMICO">🎓 Académico (Boletas)</option>
+                            <option value="LEGAL">⚖️ Legal / Conducta</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-6">
+                        <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Archivo (PDF/IMG)</label>
+                        <input type="file" name="archivo" required class="w-full text-sm">
+                    </div>
+
+                    <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 rounded shadow transition">
+                        Guardar en Bóveda
+                    </button>
+                </form>
+            </div>
+
+            <div class="md:col-span-2 bg-white rounded-xl shadow-lg overflow-hidden">
+                <table class="w-full text-left border-collapse">
+                    <thead class="bg-gray-100 text-gray-600 text-xs uppercase">
+                        <tr>
+                            <th class="p-4">Categoría</th>
+                            <th class="p-4">Documento</th>
+                            <th class="p-4">Estado</th>
+                            <th class="p-4 text-right">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-100">
+                        {% for doc in documentos %}
+                        <tr class="hover:bg-gray-50 transition">
+                            <td class="p-4">
+                                <span class="bg-blue-50 text-blue-700 px-2 py-1 rounded text-xs font-bold">{{ doc.categoria }}</span>
+                            </td>
+                            <td class="p-4 flex items-center gap-2">
+                                <span class="material-icons text-red-500 text-sm">picture_as_pdf</span>
+                                <span class="text-sm font-medium text-gray-700 truncate max-w-xs">{{ doc.nombre_archivo }}</span>
+                            </td>
+                            <td class="p-4">
+                                {% if doc.estado == 'VALIDADO' %}
+                                    <span class="text-green-600 flex items-center gap-1 text-xs font-bold">
+                                        <span class="material-icons text-sm">verified</span> Validado
+                                    </span>
+                                {% else %}
+                                    <span class="text-yellow-600 flex items-center gap-1 text-xs font-bold">
+                                        <span class="material-icons text-sm">pending</span> Pendiente
+                                    </span>
+                                {% endif %}
+                            </td>
+                            <td class="p-4 text-right flex justify-end gap-2">
+                                <a href="/{{ doc.ruta_archivo }}" target="_blank" class="text-gray-500 hover:text-blue-600" title="Ver">
+                                    <span class="material-icons text-lg">visibility</span>
+                                </a>
+                                {% if doc.estado == 'PENDIENTE' %}
+                                <a href="/director/validar-doc/{{ doc.id_documento }}/{{ alumno.id_alumno }}" class="text-gray-500 hover:text-green-600" title="Validar">
+                                    <span class="material-icons text-lg">check_circle</span>
+                                </a>
+                                {% endif %}
+                                <a href="/director/borrar-doc/{{ doc.id_documento }}/{{ alumno.id_alumno }}" class="text-gray-500 hover:text-red-600" title="Borrar" onclick="return confirm('¿Seguro?')">
+                                    <span class="material-icons text-lg">delete</span>
+                                </a>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="4" class="p-8 text-center text-gray-400">
+                                La bóveda está vacía. Sube documentos a la izquierda.
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div x-show="tab === 'tramites'">
+            <div class="bg-white rounded-xl shadow-lg p-6">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="font-bold text-gray-800 text-lg">Historial de Documentos Emitidos</h3>
+                    
+                    <a href="/director/expedientes" class="bg-green-600 text-white px-4 py-2 rounded text-sm font-bold shadow hover:bg-green-700">
+                        + Nuevo Trámite
+                    </a>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left">
+                        <thead>
+                            <tr class="border-b-2 border-gray-200 text-gray-500 text-sm">
+                                <th class="pb-3">Trámite / Actividad</th>
+                                <th class="pb-3">Emitido por</th>
+                                <th class="pb-3">Fecha y Hora</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y">
+                            {% for log in historial %}
+                            <tr class="group hover:bg-gray-50">
+                                <td class="py-3 font-bold text-gray-700">{{ log.tramite }}</td>
+                                <td class="py-3 text-gray-500 text-sm">{{ log.usuario_responsable }}</td>
+                                <td class="py-3 text-gray-400 text-xs font-mono">{{ log.fecha }}</td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="3" class="py-8 text-center text-gray-400 italic">
+                                    No hay actividad registrada en este expediente.
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+</body>
+</html>

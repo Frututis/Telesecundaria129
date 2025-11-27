@@ -4,87 +4,207 @@
     <meta charset="UTF-8">
     <title>Panel Docente - SIGET</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
 </head>
-<body class="bg-gray-50 font-sans">
+<body class="bg-gray-100 font-sans h-screen flex flex-col">
 
-    <nav class="bg-blue-800 text-white p-4 shadow-lg flex justify-between items-center">
-        <div class="flex items-center gap-2">
-            <span class="text-xl">👨‍🏫</span>
-            <span class="font-bold text-lg">Portal Docente</span>
+    <nav class="bg-blue-900 text-white p-4 shadow-lg flex justify-between items-center shrink-0 z-50">
+        <div class="flex items-center gap-3">
+            <span class="material-icons text-yellow-400 text-3xl">school</span>
+            <div>
+                <span class="font-bold text-lg block leading-none tracking-tight">Portal Docente</span>
+                <span class="text-xs text-blue-200 font-light">Ciclo Escolar {{ ciclo_actual }}</span>
+            </div>
         </div>
-        <div>
-            <span class="mr-4 text-blue-200">Hola, {{ usuario }}</span>
-            <a href="/logout" class="bg-blue-700 hover:bg-blue-600 px-4 py-2 rounded text-sm transition">Cerrar Sesión</a>
+        <div class="flex items-center gap-4">
+            <div class="text-right hidden sm:block border-r border-blue-700 pr-4 mr-2">
+                <span class="block text-sm font-bold">{{ usuario }}</span>
+                <span class="block text-xs text-blue-300">Maestro de Grupo</span>
+            </div>
+            <a href="/logout" class="bg-red-600 hover:bg-red-700 px-3 py-2 rounded text-xs font-bold transition flex items-center gap-1 shadow">
+                <span class="material-icons text-xs">logout</span> Salir
+            </a>
         </div>
     </nav>
 
-    <div class="container mx-auto p-8 max-w-5xl">
-
-        <h1 class="text-3xl font-bold text-gray-800 mb-8">Gestión de Planeaciones</h1>
-
-        <div class="bg-white p-8 rounded-xl shadow-md mb-10 border-t-4 border-blue-500">
-            <h2 class="text-xl font-bold mb-4 text-gray-700 flex items-center gap-2">
-                📤 Subir Nueva Planeación
-            </h2>
-            <p class="text-gray-500 mb-4 text-sm">Sube tus archivos en formato PDF o Word. Asegúrate de nombrar bien la semana.</p>
+    <div class="flex-1 p-4 md:p-6 overflow-hidden">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 h-full">
             
-            <form action="/subir-planeacion" method="post" enctype="multipart/form-data" class="flex flex-col md:flex-row gap-4 items-end">
-                <div class="flex-1 w-full">
-                    <label class="block text-sm font-bold text-gray-700 mb-1">Archivo</label>
-                    <input type="file" name="archivo" required 
-                           class="w-full border border-gray-300 p-2 rounded bg-gray-50 focus:outline-none focus:border-blue-500 transition">
-                </div>
-                <div class="flex-1 w-full">
-                    <label class="block text-sm font-bold text-gray-700 mb-1">Descripción / Semana</label>
-                    <input type="text" name="comentarios" placeholder="Ej. Bloque 2 - Semana 4 - Historia" required
-                           class="w-full border border-gray-300 p-2 rounded focus:outline-none focus:border-blue-500 transition">
-                </div>
-                <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 px-6 rounded shadow transition duration-200">
-                    Enviar Archivo
-                </button>
-            </form>
-        </div>
+            <div class="lg:col-span-2 bg-white rounded-xl shadow-lg flex flex-col border-t-4 border-green-500 overflow-hidden">
+                
+                <div class="p-5 border-b border-gray-100 flex flex-col sm:flex-row justify-between items-center gap-4 bg-gray-50">
+                    <div>
+                        <h2 class="font-bold text-gray-800 text-lg flex items-center gap-2">
+                            <span class="material-icons text-green-600">checklist</span> Control de Asistencia
+                        </h2>
+                        <div class="flex gap-2 mt-1">
+                            <span class="text-xs text-gray-500">Total Alumnos:</span>
+                            <span class="text-xs font-bold text-gray-700 bg-gray-200 px-2 rounded-full">{{ alumnos|length }}</span>
+                        </div>
+                    </div>
 
-        <div class="bg-white rounded-xl shadow-md overflow-hidden">
-            <div class="bg-gray-100 p-4 border-b">
-                <h3 class="font-bold text-gray-700">📚 Mis Archivos Subidos</h3>
+                    <form action="/dashboard" method="get" class="flex items-center">
+                        <input type="hidden" name="periodo_filtro" value="{{ periodo_seleccionado }}">
+                        
+                        <div class="relative group">
+                            <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                                <span class="material-icons text-blue-500 group-hover:text-blue-700 transition">calendar_month</span>
+                            </div>
+                            <input type="date" name="fecha" value="{{ fecha_seleccionada }}" 
+                                   onchange="this.form.submit()"
+                                   class="block w-full bg-white border border-gray-300 text-gray-700 py-2 pl-10 pr-3 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-bold text-sm cursor-pointer hover:bg-blue-50 transition">
+                        </div>
+                    </form>
+                </div>
+                
+                <div class="flex-1 overflow-y-auto p-0">
+                    <table class="w-full text-left border-collapse">
+                        <thead class="bg-white text-gray-500 text-xs uppercase sticky top-0 border-b border-gray-200 shadow-sm z-10">
+                            <tr>
+                                <th class="p-4 bg-gray-50 font-bold">Alumno</th>
+                                <th class="p-4 bg-gray-50 text-center font-bold">Hora Entrada</th>
+                                <th class="p-4 bg-gray-50 text-center font-bold">Estado</th>
+                                <th class="p-4 bg-gray-50 text-right font-bold">Acción</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-100">
+                            {% for alumno in alumnos %}
+                            <tr class="hover:bg-blue-50 transition group">
+                                <td class="p-4">
+                                    <div class="flex items-center gap-3">
+                                        <div class="h-8 w-8 rounded-full bg-gray-200 text-gray-600 flex items-center justify-center text-xs font-bold border border-gray-300 group-hover:bg-blue-200 group-hover:text-blue-800 transition">
+                                            {{ alumno.nombre_completo[:1] }}
+                                        </div>
+                                        <span class="font-medium text-gray-700 group-hover:text-blue-900 transition">{{ alumno.nombre_completo }}</span>
+                                    </div>
+                                </td>
+                                <td class="p-4 text-center font-mono text-sm text-gray-500">{{ alumno.hora_entrada or '--:--' }}</td>
+                                <td class="p-4 text-center">
+                                    {% if alumno.estado_asistencia == 'ASISTENCIA' %}
+                                        <span class="inline-flex items-center gap-1 bg-green-100 text-green-700 px-2 py-1 rounded text-xs font-bold border border-green-200">
+                                            <span class="material-icons text-[10px]">check_circle</span> PRESENTE
+                                        </span>
+                                    {% elif alumno.estado_asistencia == 'RETARDO' %}
+                                        <span class="inline-flex items-center gap-1 bg-yellow-100 text-yellow-700 px-2 py-1 rounded text-xs font-bold border border-yellow-200">
+                                            <span class="material-icons text-[10px]">schedule</span> RETARDO
+                                        </span>
+                                    {% elif alumno.estado_asistencia == 'JUSTIFICADO' %}
+                                        <span class="inline-flex items-center gap-1 bg-blue-100 text-blue-700 px-2 py-1 rounded text-xs font-bold border border-blue-200">
+                                            <span class="material-icons text-[10px]">assignment_turned_in</span> JUSTIFICADO
+                                        </span>
+                                    {% elif alumno.estado_asistencia == 'FALTA' %}
+                                        <span class="inline-flex items-center gap-1 bg-red-100 text-red-700 px-2 py-1 rounded text-xs font-bold border border-red-200">
+                                            <span class="material-icons text-[10px]">cancel</span> FALTA
+                                        </span>
+                                    {% else %}
+                                        <span class="text-gray-300 text-xs italic">--</span>
+                                    {% endif %}
+                                </td>
+                                <td class="p-4 text-right">
+                                    {% if alumno.estado_asistencia != 'ASISTENCIA' and alumno.estado_asistencia != 'JUSTIFICADO' %}
+                                        <a href="/maestro/justificar/{{ alumno.id_alumno }}?fecha={{ fecha_seleccionada }}" 
+                                           class="bg-white border border-blue-300 text-blue-600 hover:bg-blue-600 hover:text-white px-3 py-1.5 rounded text-xs font-bold transition shadow-sm inline-flex items-center gap-1"
+                                           onclick="return confirm('¿Justificar falta?')">
+                                            <span class="material-icons text-[14px]">edit_note</span> Justificar
+                                        </a>
+                                    {% else %}
+                                        <span class="material-icons text-gray-200 text-sm">lock</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr><td colspan="4" class="p-10 text-center text-gray-400">Sin alumnos.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
             </div>
-            
-            <table class="w-full text-left border-collapse">
-                <thead>
-                    <tr class="text-sm text-gray-500 uppercase bg-gray-50">
-                        <th class="p-4 font-semibold">Archivo</th>
-                        <th class="p-4 font-semibold">Comentarios</th>
-                        <th class="p-4 font-semibold">Fecha de Subida</th>
-                        <th class="p-4 font-semibold">Acciones</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for plan in planeaciones %}
-                    <tr class="border-b hover:bg-blue-50 transition">
-                        <td class="p-4 font-medium text-gray-800 flex items-center gap-2">
-                            📄 {{ plan.nombre_archivo }}
-                        </td>
-                        <td class="p-4 text-gray-600">{{ plan.comentarios }}</td>
-                        <td class="p-4 text-gray-500 text-sm">{{ plan.fecha_subida }}</td>
-                        <td class="p-4">
-                            <a href="/archivos/{{ plan.ruta_archivo }}" target="_blank" 
-                               class="text-blue-600 hover:text-blue-900 font-bold text-sm bg-blue-50 px-3 py-1 rounded hover:bg-blue-100 transition">
-                                Ver Documento
-                            </a>
-                        </td>
-                    </tr>
-                    {% else %}
-                    <tr>
-                        <td colspan="4" class="p-10 text-center text-gray-400">
-                            Aún no has subido ninguna planeación.
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
 
+            <div class="bg-white rounded-xl shadow-lg flex flex-col border-t-4 border-blue-500 overflow-hidden">
+                <div class="p-4 border-b border-gray-100 bg-gray-50">
+                    <h2 class="font-bold text-gray-800 flex items-center gap-2">
+                        <span class="material-icons text-blue-600">upload_file</span> Subir Planeación
+                    </h2>
+                </div>
+
+                <div class="p-5 bg-white border-b border-gray-200">
+                    <form action="/subir-planeacion" method="post" enctype="multipart/form-data">
+                        <div class="mb-3">
+                            <label class="text-xs font-bold text-gray-500 uppercase block mb-1">Periodo</label>
+                            <select name="periodo" required class="w-full border p-2 rounded text-sm bg-gray-50">
+                                <option value="" disabled selected>Selecciona quincena...</option>
+                                <optgroup label="Trimestre 1"><option value="SEP-Q1">Septiembre Q1</option><option value="SEP-Q2">Septiembre Q2</option><option value="OCT-Q1">Octubre Q1</option><option value="OCT-Q2">Octubre Q2</option></optgroup>
+                                </select>
+                        </div>
+                        <div class="mb-3">
+                            <input type="file" name="archivo" required class="w-full text-sm border p-1 rounded">
+                        </div>
+                        <div class="mb-3">
+                            <input type="text" name="comentarios" placeholder="Nota rápida..." class="w-full border p-2 rounded text-sm">
+                        </div>
+                        <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 rounded text-sm transition">Enviar Archivo</button>
+                    </form>
+                </div>
+
+                <div class="flex-1 overflow-y-auto bg-gray-50 flex flex-col">
+                    
+                    <div class="px-5 py-3 border-b border-gray-200 flex justify-between items-center bg-white sticky top-0 z-10">
+                        <span class="text-xs font-bold text-gray-400 uppercase tracking-wider">Historial</span>
+                        
+                        <form action="/dashboard" method="get">
+                            <input type="hidden" name="fecha" value="{{ fecha_seleccionada }}">
+                            
+                            <div class="relative">
+                                <select name="periodo_filtro" onchange="this.form.submit()" 
+                                        class="text-xs border border-gray-300 rounded pl-2 pr-6 py-1 bg-gray-100 text-gray-600 focus:outline-none focus:border-blue-500 cursor-pointer">
+                                    <option value="TODOS">Todos</option>
+                                    {% for p in mis_periodos %}
+                                    <option value="{{ p }}" {% if p == periodo_seleccionado %} selected {% endif %}>{{ p }}</option>
+                                    {% endfor %}
+                                </select>
+                                <span class="material-icons absolute right-1 top-1 text-gray-400 pointer-events-none text-sm">filter_list</span>
+                            </div>
+                        </form>
+                    </div>
+
+                    <ul class="divide-y divide-gray-200">
+                        {% for plan in planeaciones %}
+                        <li class="px-5 py-3 hover:bg-white transition flex justify-between items-center group">
+                            <div>
+                                <p class="text-sm font-bold text-gray-700">{{ plan.periodo }}</p>
+                                <p class="text-xs text-gray-500 truncate w-36">{{ plan.nombre_archivo }}</p>
+                                
+                                {% if plan.estado == 'APROBADO' %}
+                                    <div class="mt-1">
+                                        <span class="inline-flex items-center gap-1 bg-green-100 text-green-700 px-1.5 py-0.5 rounded text-[10px] font-bold">
+                                            <span class="material-icons text-[10px]">verified</span> Aprobado
+                                        </span>
+                                        {% if plan.retroalimentacion %}
+                                        <p class="text-[10px] text-gray-500 italic mt-0.5 border-l-2 border-green-300 pl-1">"{{ plan.retroalimentacion }}"</p>
+                                        {% endif %}
+                                    </div>
+                                {% else %}
+                                    <span class="inline-flex items-center gap-1 bg-yellow-100 text-yellow-700 px-1.5 py-0.5 rounded text-[10px] font-bold mt-1">
+                                        <span class="material-icons text-[10px]">hourglass_empty</span> En revisión
+                                    </span>
+                                {% endif %}
+                            </div>
+                            <a href="/archivos/{{ plan.ruta_archivo }}" target="_blank" class="bg-white border border-gray-300 text-gray-500 hover:text-blue-600 hover:border-blue-400 p-1.5 rounded-lg transition shadow-sm">
+                                <span class="material-icons text-sm">visibility</span>
+                            </a>
+                        </li>
+                        {% else %}
+                        <li class="p-6 text-center flex flex-col items-center justify-center text-gray-400">
+                            <span class="material-icons text-3xl mb-1 text-gray-300">folder_off</span>
+                            <p class="text-xs">No hay archivos.</p>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+
+        </div>
     </div>
+
 </body>
 </html>
