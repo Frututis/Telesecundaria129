@@ -21,53 +21,53 @@
 
     <div class="container mx-auto p-8 flex justify-center">
         
-        <div class="bg-white p-8 rounded-xl shadow-lg w-full max-w-2xl border-t-4 border-green-500">
+        <div class="bg-white p-8 rounded-xl shadow-lg w-full max-w-3xl border-t-4 border-green-500">
             
             <div class="mb-6 border-b border-gray-100 pb-4">
                 <h1 class="text-2xl font-bold text-gray-800">Nuevo Estudiante</h1>
-                <p class="text-gray-500 text-sm">Complete el formulario para dar de alta al alumno en el ciclo escolar actual.</p>
+                <p class="text-gray-500 text-sm">Llene la ficha de identificación para crear el expediente digital.</p>
             </div>
 
             <script>
-                // Este script lee la URL para ver si Python mandó un mensaje "?msg=..."
                 const urlParams = new URLSearchParams(window.location.search);
                 const mensaje = urlParams.get('msg');
+                const error = urlParams.get('error');
                 
                 if (mensaje) {
                     document.write(`
-                        <div class="bg-green-100 border-l-4 border-green-500 text-green-700 p-4 mb-6 rounded shadow-sm flex items-center gap-3 animate-fade-in-down">
-                            <div class="bg-green-200 p-2 rounded-full">
-                                <span class="material-icons text-green-600">check</span>
-                            </div>
-                            <div>
-                                <p class="font-bold">¡Registro Exitoso!</p>
-                                <p class="text-sm">${mensaje}</p>
-                            </div>
+                        <div class="bg-green-100 border-l-4 border-green-500 text-green-700 p-4 mb-6 rounded shadow-sm flex items-center gap-2">
+                            <span class="material-icons">check_circle</span> <p>${mensaje}</p>
                         </div>
                     `);
-                    // Limpiamos la URL para que el mensaje no salga si recargas la página
-                    window.history.replaceState({}, document.title, window.location.pathname);
                 }
+                if (error) {
+                    document.write(`
+                        <div class="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6 rounded shadow-sm flex items-center gap-2">
+                            <span class="material-icons">error</span> <p>${error}</p>
+                        </div>
+                    `);
+                }
+                window.history.replaceState({}, document.title, window.location.pathname);
             </script>
 
             <form id="formAlumno" action="/director/guardar-alumno" method="post" autocomplete="off">
                 
-                <div class="bg-gray-50 p-4 rounded-lg border border-gray-200 mb-6">
-                    <h3 class="text-gray-500 font-bold text-xs uppercase mb-3 flex items-center gap-1">
-                        <span class="material-icons text-xs">school</span> Información del Alumno
+                <div class="bg-gray-50 p-5 rounded-lg border border-gray-200 mb-6">
+                    <h3 class="text-gray-500 font-bold text-xs uppercase mb-4 flex items-center gap-1">
+                        <span class="material-icons text-xs">school</span> Datos del Alumno
                     </h3>
 
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div class="md:col-span-2">
-                            <label class="block text-gray-700 text-sm font-bold mb-1">Nombre Completo</label>
+                            <label class="block text-gray-700 text-sm font-bold mb-1">Nombre Completo (Apellidos primero)</label>
                             <input name="nombre" type="text" placeholder="Ej. PÉREZ LÓPEZ JUAN" required 
-                                   class="w-full border border-gray-300 p-2.5 rounded-lg focus:outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500 uppercase transition">
+                                   class="w-full border border-gray-300 p-2.5 rounded-lg focus:outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500 uppercase transition bg-white">
                         </div>
 
                         <div>
                             <label class="block text-gray-700 text-sm font-bold mb-1">CURP</label>
                             <input name="curp" type="text" placeholder="18 Caracteres" required maxlength="18" minlength="18"
-                                   class="w-full border border-gray-300 p-2.5 rounded-lg focus:outline-none focus:border-green-500 uppercase font-mono transition">
+                                   class="w-full border border-gray-300 p-2.5 rounded-lg focus:outline-none focus:border-green-500 uppercase font-mono transition bg-white">
                         </div>
 
                         <div>
@@ -91,42 +91,57 @@
                     </div>
                 </div>
 
-                <div class="bg-gray-50 p-4 rounded-lg border border-gray-200 mb-8">
-                    <h3 class="text-gray-500 font-bold text-xs uppercase mb-3 flex items-center gap-1">
-                        <span class="material-icons text-xs">contact_phone</span> Contacto de Emergencia / Tutor
+                <div class="bg-gray-50 p-5 rounded-lg border border-gray-200 mb-8">
+                    <h3 class="text-gray-600 font-bold text-xs uppercase mb-4 flex items-center gap-1 border-b pb-2">
+                        <span class="material-icons text-xs">contact_phone</span> Números de Contacto
                     </h3>
 
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div class="md:col-span-2">
-                            <label class="block text-gray-700 text-sm font-bold mb-1">Nombre del Tutor</label>
-                            <div class="relative">
-                                <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400">
-                                    <span class="material-icons text-sm">person</span>
-                                </span>
-                                <input name="contacto" type="text" placeholder="Nombre del Padre, Madre o Tutor" required 
-                                       class="w-full pl-10 border border-gray-300 p-2.5 rounded-lg focus:outline-none focus:border-green-500 transition">
-                            </div>
-                        </div>
-
-                        <div class="md:col-span-2">
-                            <label class="block text-gray-700 text-sm font-bold mb-1">Teléfono (Móvil/WhatsApp)</label>
-                            <div class="relative">
-                                <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400">
-                                    <span class="material-icons text-sm">phone</span>
-                                </span>
-                                <input name="telefono" type="tel" placeholder="Ej. 55 1234 5678" required maxlength="15" 
-                                       class="w-full pl-10 border border-gray-300 p-2.5 rounded-lg focus:outline-none focus:border-green-500 transition">
-                            </div>
-                            <p class="text-xs text-gray-400 mt-1">Este número se usará para notificaciones de asistencia.</p>
+                    <div class="mb-4">
+                        <label class="block text-gray-700 text-sm font-bold mb-1">Nombre del Tutor Legal</label>
+                        <div class="relative">
+                            <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400">
+                                <span class="material-icons text-sm">person</span>
+                            </span>
+                            <input name="contacto" type="text" placeholder="Quien firma la boleta" required 
+                                   class="w-full pl-10 border border-gray-300 p-2.5 rounded-lg focus:outline-none focus:border-blue-500 transition bg-white">
                         </div>
                     </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        
+                        <div>
+                            <label class="block text-gray-700 text-xs font-bold mb-1">Tel. Tutor (Principal)</label>
+                            <input name="tel_tutor" type="tel" placeholder="Móvil / WhatsApp" required maxlength="15"
+                                   class="w-full border-2 border-blue-100 p-2 rounded focus:border-blue-500 bg-white focus:outline-none">
+                        </div>
+
+                        <div>
+                            <label class="block text-red-600 text-xs font-bold mb-1">Tel. Emergencia (Otro)</label>
+                            <input name="tel_emergencia" type="tel" placeholder="Vecino / Abuelo" required maxlength="15"
+                                   class="w-full border-2 border-red-100 p-2 rounded focus:border-red-500 bg-white focus:outline-none">
+                        </div>
+
+                        <div>
+                            <label class="block text-gray-500 text-xs font-bold mb-1">Tel. Madre (Opcional)</label>
+                            <input name="tel_madre" type="tel" placeholder="Casa o Móvil" maxlength="15"
+                                   class="w-full border border-gray-300 p-2 rounded focus:border-gray-500 bg-white focus:outline-none">
+                        </div>
+
+                        <div>
+                            <label class="block text-gray-500 text-xs font-bold mb-1">Tel. Padre (Opcional)</label>
+                            <input name="tel_padre" type="tel" placeholder="Casa o Trabajo" maxlength="15"
+                                   class="w-full border border-gray-300 p-2 rounded focus:border-gray-500 bg-white focus:outline-none">
+                        </div>
+
+                    </div>
+                    <p class="text-xs text-gray-400 mt-2 italic">* Se requiere al menos el del Tutor y uno de Emergencia.</p>
                 </div>
 
                 <div class="flex justify-end">
                     <button type="submit" id="btnGuardar" 
-                            class="w-full md:w-auto bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-8 rounded-lg shadow-lg transition transform hover:-translate-y-1 flex items-center justify-center gap-2">
-                        <span class="material-icons">save</span>
-                        <span>Guardar Expediente</span>
+                            class="w-full md:w-auto bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg shadow-lg transition transform hover:-translate-y-1 flex items-center justify-center gap-2">
+                        <span>Guardar y Subir Documentos</span>
+                        <span class="material-icons text-sm">arrow_forward</span>
                     </button>
                 </div>
 
@@ -145,7 +160,7 @@
                     <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                     <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                 </svg>
-                Guardando...
+                Creando Expediente...
             `;
             // Desactivamos clics
             btn.classList.add('opacity-75', 'cursor-not-allowed', 'pointer-events-none');

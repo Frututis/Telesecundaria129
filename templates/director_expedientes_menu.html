@@ -12,70 +12,78 @@
         <div class="flex items-center gap-2 font-bold text-lg">
             <span class="material-icons text-purple-400">folder_shared</span> Expedientes
         </div>
-        <a href="/dashboard" class="bg-gray-700 hover:bg-gray-600 px-3 py-1 rounded text-sm">Volver al Dashboard</a>
+        <a href="/dashboard" class="bg-gray-700 hover:bg-gray-600 px-3 py-1 rounded text-sm flex items-center gap-1">
+            <span class="material-icons text-sm">home</span> Dashboard
+        </a>
     </nav>
 
     <div class="container mx-auto p-6">
         
         <div class="flex flex-col md:flex-row gap-4 mb-8">
-            <a href="/director/agregar-alumno" class="flex-1 bg-white p-6 rounded-xl shadow-md border-l-4 border-green-500 hover:shadow-lg transition flex items-center gap-4 group">
-                <div class="bg-green-100 p-3 rounded-full group-hover:bg-green-200">
+            
+            <a href="/director/agregar-alumno" class="flex-1 bg-white p-6 rounded-xl shadow-md border-l-4 border-green-500 hover:shadow-lg transition flex items-center gap-4 group transform hover:-translate-y-1">
+                <div class="bg-green-100 p-3 rounded-full group-hover:bg-green-200 transition">
                     <span class="material-icons text-green-600 text-2xl">person_add</span>
                 </div>
                 <div>
-                    <h2 class="font-bold text-gray-800">Nuevo Ingreso</h2>
-                    <p class="text-xs text-gray-500">Inscribir alumno al ciclo.</p>
+                    <h2 class="font-bold text-gray-800 text-lg">Nuevo Ingreso</h2>
+                    <p class="text-xs text-gray-500">Inscribir alumno nuevo al sistema.</p>
                 </div>
             </a>
 
             <div class="flex-[2] bg-white p-6 rounded-xl shadow-md border-l-4 border-purple-500 flex items-center gap-4">
                 <span class="material-icons text-purple-400">search</span>
-                <input type="text" id="buscador" onkeyup="filtrarTabla()" placeholder="Buscar por nombre, apellido o CURP..." 
-                       class="w-full border-b border-gray-300 focus:border-purple-500 outline-none text-lg text-gray-700 pb-1 bg-transparent">
+                <input type="text" id="buscador" onkeyup="filtrarTabla()" placeholder="Buscar alumno por nombre o CURP..." 
+                       class="w-full border-b border-gray-300 focus:border-purple-500 outline-none text-lg text-gray-700 pb-1 bg-transparent transition">
             </div>
         </div>
 
-        <div class="bg-white rounded-xl shadow-lg overflow-hidden">
+        <div class="bg-white rounded-xl shadow-lg overflow-hidden border border-gray-200">
             <div class="bg-gray-50 p-4 border-b border-gray-200 flex justify-between items-center">
-                <h3 class="font-bold text-gray-700">Directorio Escolar ({{ alumnos|length }} Alumnos)</h3>
+                <h3 class="font-bold text-gray-700 flex items-center gap-2">
+                    <span class="material-icons text-gray-400">list</span> 
+                    Directorio Escolar
+                </h3>
+                <span class="text-xs bg-gray-200 px-2 py-1 rounded-full text-gray-600 font-bold">{{ alumnos|length }} Alumnos</span>
             </div>
             
             <div class="overflow-x-auto max-h-[600px]">
                 <table class="w-full text-left border-collapse" id="tablaAlumnos">
-                    <thead class="bg-gray-100 text-gray-600 text-xs uppercase sticky top-0 shadow-sm">
+                    <thead class="bg-white text-gray-500 text-xs uppercase sticky top-0 shadow-sm z-10">
                         <tr>
-                            <th class="p-4">Grado / Grupo</th>
-                            <th class="p-4">Nombre Completo</th>
-                            <th class="p-4">CURP</th>
-                            <th class="p-4 text-center">Acciones</th>
+                            <th class="p-4 bg-gray-50">Grado / Grupo</th>
+                            <th class="p-4 bg-gray-50">Nombre Completo</th>
+                            <th class="p-4 bg-gray-50">CURP</th>
+                            <th class="p-4 bg-gray-50 text-center">Acciones</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-gray-100">
                         {% for alumno in alumnos %}
                         <tr class="hover:bg-purple-50 transition group">
                             <td class="p-4">
-                                <span class="bg-gray-200 text-gray-700 font-bold px-2 py-1 rounded text-xs">
+                                <span class="bg-gray-100 text-gray-700 font-bold px-2 py-1 rounded text-xs border border-gray-300">
                                     {{ alumno.grado }}° "{{ alumno.grupo }}"
                                 </span>
                             </td>
-                            <td class="p-4 font-bold text-gray-800 text-lg">
-                                {{ alumno.nombre_completo }}
+                            <td class="p-4">
+                                <div class="font-bold text-gray-800">{{ alumno.nombre_completo }}</div>
                             </td>
                             <td class="p-4 text-gray-500 font-mono text-sm">
                                 {{ alumno.curp }}
                             </td>
                             <td class="p-4 text-center">
                                 <a href="/director/perfil-alumno/{{ alumno.id_alumno }}" 
-                                   class="inline-flex items-center gap-1 bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded shadow text-sm font-bold transition transform group-hover:scale-105">
-                                    <span class="material-icons text-sm">visibility</span>
-                                    Abrir Expediente
+                                   class="inline-flex items-center gap-1 bg-purple-600 hover:bg-purple-700 text-white px-4 py-1.5 rounded-lg shadow-sm text-xs font-bold transition transform group-hover:scale-105">
+                                    <span class="material-icons text-xs">folder_open</span>
+                                    Expediente
                                 </a>
                             </td>
                         </tr>
                         {% else %}
                         <tr>
-                            <td colspan="4" class="p-10 text-center text-gray-400">
-                                No hay alumnos registrados aún. Usa el botón "Nuevo Ingreso".
+                            <td colspan="4" class="p-10 text-center flex flex-col items-center text-gray-400">
+                                <span class="material-icons text-4xl mb-2">school</span>
+                                <p>No hay alumnos registrados aún.</p>
                             </td>
                         </tr>
                         {% endfor %}
@@ -93,7 +101,7 @@
             const tabla = document.getElementById("tablaAlumnos");
             const filas = tabla.getElementsByTagName("tr");
 
-            // Recorremos todas las filas (saltando el encabezado)
+            // Empezamos en 1 para saltar el encabezado
             for (let i = 1; i < filas.length; i++) {
                 let tdNombre = filas[i].getElementsByTagName("td")[1];
                 let tdCurp = filas[i].getElementsByTagName("td")[2];
@@ -102,7 +110,6 @@
                     let textoNombre = tdNombre.textContent || tdNombre.innerText;
                     let textoCurp = tdCurp.textContent || tdCurp.innerText;
                     
-                    // Si el nombre O la curp coinciden con lo escrito
                     if (textoNombre.toUpperCase().indexOf(filtro) > -1 || textoCurp.toUpperCase().indexOf(filtro) > -1) {
                         filas[i].style.display = "";
                     } else {

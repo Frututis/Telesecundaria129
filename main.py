@@ -18,8 +18,6 @@ from mysql.connector import IntegrityError
 # ==========================================
 app = FastAPI()
 
-# ¡IMPORTANTE! Cambia esto cada año para limpiar las vistas por defecto
-CICLO_ACTUAL = "2024-2025"
 
 # Configuración de carpetas
 os.makedirs("uploads", exist_ok=True) # Carpeta principal
@@ -41,7 +39,7 @@ def get_db_connection():
 
 # Helper: Saber qué ciclo quiere ver el Director
 def obtener_ciclo_activo(request: Request):
-    return request.cookies.get("ciclo_seleccionado", CICLO_ACTUAL)
+    return request.cookies.get("ciclo_seleccionado", get_ciclo_sistema())
 
 # ==========================================
 # 3. AUTENTICACIÓN (LOGIN, LOGOUT, PASSWORD)
@@ -142,7 +140,7 @@ async def dashboard(
     # Contexto base
     contexto = {
         "request": request, "usuario": usuario, "rol": rol,
-        "ciclo_actual": CICLO_ACTUAL,
+        "ciclo_actual":get_ciclo_sistema(),
         "fecha_seleccionada": fecha_seleccionada
     }
 
@@ -164,9 +162,12 @@ async def dashboard(
             contexto["planeaciones"] = cursor.fetchall()
             
             # Lista de Ciclos para el Selector
-            cursor.execute("SELECT DISTINCT ciclo_escolar FROM planeaciones ORDER BY ciclo_escolar DESC")
-            ciclos = [fila['ciclo_escolar'] for fila in cursor.fetchall()]
-            if CICLO_ACTUAL not in ciclos: ciclos.insert(0, CICLO_ACTUAL)
+            cursor.execute("SELECT nombre FROM ciclos ORDER BY nombre DESC")
+            ciclos = [fila['nombre'] for fila in cursor.fetchall()]
+            
+            ciclo_sistema = get_ciclo_sistema()
+            if ciclo_sistema not in ciclos:
+                ciclos.insert(0, ciclo_sistema)
             
             contexto["lista_ciclos"] = ciclos
             contexto["ciclo_actual"] = ciclo_visualizar
@@ -526,22 +527,50 @@ async def vista_agregar_alumno(request: Request):
     conn.close()
     return templates.TemplateResponse("director_agregar_alumno.html", {"request": request, "grupos": grupos})
 
-# GUARDAR ALUMNO (CON CONTACTO)
+# ACCIÓN: GUARDAR ALUMNO (CON 4 TELÉFONOS Y REDIRECCIÓN INTELIGENTE)
 @app.post("/director/guardar-alumno")
-async def guardar_alumno(request: Request, nombre: str = Form(...), curp: str = Form(...), id_grupo: int = Form(...), contacto: str = Form(...), telefono: str = Form(...)):
+async def guardar_alumno(
+    request: Request, 
+    nombre: str = Form(...), 
+    curp: str = Form(...), 
+    id_grupo: int = Form(...),
+    contacto: str = Form(...), # Nombre del Tutor Principal
+    tel_tutor: str = Form(""), # Usamos default "" por si lo dejan vacío
+    tel_madre: str = Form(""),
+    tel_padre: str = Form(""),
+    tel_emergencia: str = Form("")
+):
     conn = get_db_connection()
     cursor = conn.cursor()
+    id_nuevo_alumno = None
+
     try:
-        query = "INSERT INTO alumnos (nombre_completo, curp, id_grupo, nombre_contacto, telefono_contacto) VALUES (%s, %s, %s, %s, %s)"
-        cursor.execute(query, (nombre, curp, id_grupo, contacto, telefono))
+        # Insertamos los datos
+        query = """
+        INSERT INTO alumnos 
+        (nombre_completo, curp, id_grupo, nombre_contacto, telefono_tutor, telefono_madre, telefono_padre, telefono_emergencia) 
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+        """
+        cursor.execute(query, (nombre, curp, id_grupo, contacto, tel_tutor, tel_madre, tel_padre, tel_emergencia))
         conn.commit()
-        mensaje = "Alumno inscrito correctamente"
+        
+        # OBTENEMOS EL ID DEL ALUMNO RECIÉN CREADO
+        id_nuevo_alumno = cursor.lastrowid 
+        
     except Exception as e:
-        mensaje = f"Error: {e}"
+        print(f"Error: {e}")
+        # Si falla, volvemos al formulario con error
+        return RedirectResponse(url="/director/agregar-alumno?error=Error al guardar", status_code=303)
     finally:
         conn.close()
-    return RedirectResponse(url="/director/agregar-alumno?msg=" + mensaje, status_code=303)
-
+    
+    # --- CAMBIO CLAVE DE FLUJO ---
+    # En lugar de volver al formulario vacío, lo mandamos directo a SU PERFIL
+    # y activamos la pestaña de documentos automáticamente via URL (?tab=docs)
+    return RedirectResponse(
+        url=f"/director/perfil-alumno/{id_nuevo_alumno}?msg=Alumno registrado. Sube sus documentos ahora.&tab=documentos", 
+        status_code=303
+    )
 # API BUSCADOR (JSON)
 @app.get("/api/buscar-alumno")
 async def buscar_alumno_api(q: str = ""):
@@ -579,15 +608,42 @@ async def perfil_alumno(request: Request, id_alumno: int):
         "request": request, "alumno": alumno, "documentos": documentos, "historial": historial, "usuario_logueado": usuario
     })
 
-# ACTUALIZAR DATOS ALUMNO
+# ACCIÓN: ACTUALIZAR DATOS COMPLETOS (CON 4 TELÉFONOS)
 @app.post("/director/actualizar-datos-alumno")
-async def actualizar_datos_alumno(request: Request, id_alumno: int = Form(...), nombre: str = Form(...), curp: str = Form(...), contacto: str = Form(...), telefono: str = Form(...)):
+async def actualizar_datos_alumno(
+    request: Request,
+    id_alumno: int = Form(...),
+    nombre: str = Form(...),
+    curp: str = Form(...),
+    contacto: str = Form(...), # Tutor
+    tel_tutor: str = Form(""),
+    tel_madre: str = Form(""),
+    tel_padre: str = Form(""),
+    tel_emergencia: str = Form("")
+):
     conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute("UPDATE alumnos SET nombre_completo = %s, curp = %s, nombre_contacto = %s, telefono_contacto = %s WHERE id_alumno = %s", (nombre, curp, contacto, telefono, id_alumno))
-    conn.commit()
-    conn.close()
-    return RedirectResponse(url=f"/director/perfil-alumno/{id_alumno}?msg=Datos actualizados", status_code=303)
+    
+    try:
+        query = """
+        UPDATE alumnos 
+        SET nombre_completo = %s, 
+            curp = %s, 
+            nombre_contacto = %s, 
+            telefono_tutor = %s,
+            telefono_madre = %s,
+            telefono_padre = %s,
+            telefono_emergencia = %s
+        WHERE id_alumno = %s
+        """
+        cursor.execute(query, (nombre, curp, contacto, tel_tutor, tel_madre, tel_padre, tel_emergencia, id_alumno))
+        conn.commit()
+    except Exception as e:
+        print(f"Error actualizando: {e}")
+    finally:
+        conn.close()
+    
+    return RedirectResponse(url=f"/director/perfil-alumno/{id_alumno}?msg=Datos actualizados correctamente", status_code=303)
 
 # SUBIR DOCUMENTO A LA BÓVEDA
 @app.post("/director/subir-documento-alumno")
@@ -642,3 +698,81 @@ async def imprimir_avanzado(
         "request": request, "alumno": alumno, "fecha": fecha_texto,
         "n1": nota1, "n2": nota2, "n3": nota3, "pf": promedio_final
     })
+# ==========================================
+# 11. MÓDULO DE GESTIÓN DE CICLOS (SISTEMA)
+# ==========================================
+
+# HELPER: Obtener cuál es el ciclo activo REAL desde la BD
+def get_ciclo_sistema():
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+    cursor.execute("SELECT nombre FROM ciclos WHERE activo = 1")
+    ciclo = cursor.fetchone()
+    conn.close()
+    # Si por error no hay ninguno, regresamos uno default
+    return ciclo['nombre'] if ciclo else "2024-2025"
+
+# VISTA: PANEL DE CONFIGURACIÓN DE CICLOS
+# VISTA: PANEL DE CONFIGURACIÓN DE CICLOS
+@app.get("/director/configuracion-ciclos", response_class=HTMLResponse)
+async def configurar_ciclos(request: Request):
+    usuario = request.cookies.get("usuario_logueado")
+    rol = request.cookies.get("rol_usuario")
+    
+    # Seguridad: Solo el Director entra aquí
+    if not usuario or rol != 'DIRECTOR': 
+        return RedirectResponse(url="/dashboard")
+    
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+    
+    # Traemos todos los ciclos para la lista
+    # Ordenamos por nombre descendente para ver los años más nuevos arriba
+    cursor.execute("SELECT * FROM ciclos ORDER BY nombre DESC")
+    lista_ciclos = cursor.fetchall()
+    
+    conn.close()
+    
+    return templates.TemplateResponse("director_ciclos.html", {
+        "request": request, 
+        "ciclos": lista_ciclos
+    })
+# ACCIÓN: CREAR UN NUEVO CICLO (POST)
+@app.post("/director/crear-ciclo")
+async def crear_ciclo(request: Request, nombre_ciclo: str = Form(...)):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        # Insertamos el nuevo ciclo (por defecto nace inactivo/cerrado)
+        # La columna 'activo' se pone en 0 automáticamente según definimos la tabla
+        query = "INSERT INTO ciclos (nombre, activo) VALUES (%s, 0)"
+        cursor.execute(query, (nombre_ciclo,))
+        conn.commit()
+    except Exception as e:
+        print(f"Error creando ciclo: {e}")
+        # Aquí podrías manejar el error si intentan crear un duplicado
+    finally:
+        conn.close()
+        
+    return RedirectResponse(url="/director/configuracion-ciclos", status_code=303)
+
+# ACCIÓN: ACTIVAR UN CICLO (CAMBIO DE AÑO)
+@app.get("/director/activar-ciclo/{id_ciclo}")
+async def activar_ciclo(id_ciclo: int):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    try:
+        # 1. "Apagamos" todos los ciclos primero (activo = 0)
+        cursor.execute("UPDATE ciclos SET activo = 0")
+        
+        # 2. "Prendemos" solo el que el director seleccionó (activo = 1)
+        cursor.execute("UPDATE ciclos SET activo = 1 WHERE id_ciclo = %s", (id_ciclo,))
+        
+        conn.commit()
+    except Exception as e:
+        print(f"Error activando ciclo: {e}")
+    finally:
+        conn.close()
+        
+    return RedirectResponse(url="/director/configuracion-ciclos", status_code=303)

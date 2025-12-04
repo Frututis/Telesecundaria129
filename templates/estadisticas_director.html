@@ -11,24 +11,29 @@
 
     <nav class="flex justify-between items-center mb-8">
         <div>
-            <h1 class="text-3xl font-bold text-gray-800">📊 Análisis de Asistencia</h1>
+            <h1 class="text-3xl font-bold text-gray-800 flex items-center gap-2">
+                <span class="material-icons text-blue-600 text-4xl">insights</span>
+                Análisis de Asistencia
+            </h1>
             <p class="text-gray-500">Reporte de incidencias y puntualidad escolar</p>
         </div>
-        <a href="/dashboard" class="bg-gray-700 text-white px-4 py-2 rounded hover:bg-gray-600">Volver al Dashboard</a>
+        <a href="/dashboard" class="bg-gray-800 text-white px-4 py-2 rounded hover:bg-gray-700 shadow transition">
+            Volver al Dashboard
+        </a>
     </nav>
 
     <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
         
-        <div class="bg-white p-6 rounded-xl shadow-lg">
+        <div class="bg-white p-6 rounded-xl shadow-lg border-t-4 border-blue-500">
             <h2 class="font-bold text-gray-700 mb-4 border-b pb-2">Panorama General de la Escuela</h2>
-            <div class="h-64 flex justify-center">
+            <div class="relative h-64 w-full flex justify-center">
                 <canvas id="graficaGlobal"></canvas>
             </div>
         </div>
 
-        <div class="bg-white p-6 rounded-xl shadow-lg">
+        <div class="bg-white p-6 rounded-xl shadow-lg border-t-4 border-red-500">
             <h2 class="font-bold text-gray-700 mb-4 border-b pb-2">Grupos con Mayor Ausentismo</h2>
-            <div class="h-64">
+            <div class="relative h-64 w-full">
                 <canvas id="graficaGrupos"></canvas>
             </div>
         </div>
@@ -37,7 +42,7 @@
     <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
         
         <div class="bg-white rounded-xl shadow-lg overflow-hidden border-t-4 border-red-500">
-            <div class="p-4 bg-red-50 flex items-center gap-2">
+            <div class="p-4 bg-red-50 flex items-center gap-2 border-b border-red-100">
                 <span class="material-icons text-red-500">warning</span>
                 <h3 class="font-bold text-red-800">Alumnos con más FALTAS</h3>
             </div>
@@ -51,8 +56,8 @@
                 </thead>
                 <tbody>
                     {% for alumno in top_faltas %}
-                    <tr class="border-b hover:bg-red-50">
-                        <td class="p-3 font-medium">{{ alumno.nombre_completo }}</td>
+                    <tr class="border-b hover:bg-red-50 transition">
+                        <td class="p-3 font-medium text-gray-700">{{ alumno.nombre_completo }}</td>
                         <td class="p-3 text-sm text-gray-500">{{ alumno.grupo }}</td>
                         <td class="p-3 text-center font-bold text-red-600 text-lg">{{ alumno.cantidad }}</td>
                     </tr>
@@ -64,7 +69,7 @@
         </div>
 
         <div class="bg-white rounded-xl shadow-lg overflow-hidden border-t-4 border-yellow-500">
-            <div class="p-4 bg-yellow-50 flex items-center gap-2">
+            <div class="p-4 bg-yellow-50 flex items-center gap-2 border-b border-yellow-100">
                 <span class="material-icons text-yellow-600">schedule</span>
                 <h3 class="font-bold text-yellow-800">Alumnos con más RETARDOS</h3>
             </div>
@@ -78,8 +83,8 @@
                 </thead>
                 <tbody>
                     {% for alumno in top_retardos %}
-                    <tr class="border-b hover:bg-yellow-50">
-                        <td class="p-3 font-medium">{{ alumno.nombre_completo }}</td>
+                    <tr class="border-b hover:bg-yellow-50 transition">
+                        <td class="p-3 font-medium text-gray-700">{{ alumno.nombre_completo }}</td>
                         <td class="p-3 text-sm text-gray-500">{{ alumno.grupo }}</td>
                         <td class="p-3 text-center font-bold text-yellow-600 text-lg">{{ alumno.cantidad }}</td>
                     </tr>
@@ -92,49 +97,69 @@
 
     </div>
 
-<script>
-    // 1. Configuración Gráfica Global (Pastel)
-    const ctxGlobal = document.getElementById('graficaGlobal').getContext('2d');
-    
-    // Verificamos si hay datos antes de dibujar para evitar errores vacíos
-    const datosGlobales = {{ data_global | tojson | safe }};
-    const etiquetasGlobales = {{ labels_global | tojson | safe }};
+    <script>
+        // Recibimos los datos de Python
+        const etiquetasGlobales = {{ labels_global | tojson }};
+        const datosGlobales = {{ data_global | tojson }};
+        
+        const etiquetasGrupos = {{ labels_grupo | tojson }};
+        const datosGrupos = {{ data_grupo | tojson }};
 
-    new Chart(ctxGlobal, {
-        type: 'doughnut', 
-        data: {
-            labels: etiquetasGlobales, 
-            datasets: [{
-                data: datosGlobales,
-                backgroundColor: ['#10B981', '#F59E0B', '#EF4444', '#3B82F6'], 
-                hoverOffset: 4
-            }]
+        // --- GRÁFICA 1: GLOBAL (DONA) ---
+        const ctxGlobal = document.getElementById('graficaGlobal').getContext('2d');
+        
+        if (etiquetasGlobales && etiquetasGlobales.length > 0) {
+            new Chart(ctxGlobal, {
+                type: 'doughnut',
+                data: {
+                    labels: etiquetasGlobales,
+                    datasets: [{
+                        data: datosGlobales,
+                        backgroundColor: ['#10B981', '#F59E0B', '#EF4444', '#3B82F6'], 
+                        hoverOffset: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false, // <--- ESTO EVITA QUE SE HAGA GIGANTE
+                    plugins: {
+                        legend: {
+                            position: 'bottom', // Pone la leyenda abajo para ahorrar espacio lateral
+                            labels: { boxWidth: 12, font: { size: 11 } }
+                        }
+                    }
+                }
+            });
         }
-    });
 
-    // 2. Configuración Gráfica Grupos (Barras)
-    const ctxGrupos = document.getElementById('graficaGrupos').getContext('2d');
-    
-    const datosGrupos = {{ data_grupo | tojson | safe }};
-    const etiquetasGrupos = {{ labels_grupo | tojson | safe }};
-
-    new Chart(ctxGrupos, {
-        type: 'bar',
-        data: {
-            labels: etiquetasGrupos,
-            datasets: [{
-                label: 'Cantidad de Faltas',
-                data: datosGrupos,
-                backgroundColor: '#EF4444', // Rojo
-                borderRadius: 5
-            }]
-        },
-        options: {
-            scales: {
-                y: { beginAtZero: true }
-            }
+        // --- GRÁFICA 2: GRUPOS (BARRAS) ---
+        const ctxGrupos = document.getElementById('graficaGrupos').getContext('2d');
+        
+        if (etiquetasGrupos && etiquetasGrupos.length > 0) {
+            new Chart(ctxGrupos, {
+                type: 'bar',
+                data: {
+                    labels: etiquetasGrupos,
+                    datasets: [{
+                        label: 'Cantidad de Faltas',
+                        data: datosGrupos,
+                        backgroundColor: '#EF4444',
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false, // <--- ESTO EVITA QUE SE HAGA GIGANTE
+                    scales: {
+                        y: { beginAtZero: true, ticks: { stepSize: 1 } }
+                    },
+                    plugins: {
+                        legend: { display: false } // Ocultamos leyenda porque ya dice el título
+                    }
+                }
+            });
         }
-    });
-</script>
+    </script>
+
 </body>
 </html>

@@ -2,170 +2,189 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Expediente Digital</title>
+    <title>Expediente: {{ alumno.nombre_completo }}</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
-    <script src="//unpkg.com/alpinejs" defer></script>
+    
+    <style>
+        /* Estilos para el manejo de pestañas sin librerías extra */
+        .tab-content { display: none; }
+        .tab-content.active { display: block; animation: fadeIn 0.3s ease-in-out; }
+        .tab-btn.active { border-bottom-color: #2563EB; color: #1D4ED8; background-color: #EFF6FF; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    </style>
 </head>
-<body class="bg-gray-100 font-sans" x-data="{ tab: 'documentos' }">
+<body class="bg-gray-100 font-sans">
 
-    <nav class="bg-gray-900 text-white p-4 shadow-lg flex justify-between items-center">
+    <nav class="bg-gray-900 text-white p-4 shadow-lg flex justify-between items-center sticky top-0 z-50">
         <div class="flex items-center gap-2 font-bold text-lg">
             <span class="material-icons text-blue-400">folder_shared</span> 
-            Expediente: {{ alumno.nombre_completo }}
+            Expediente Digital
         </div>
-        <a href="/director/expedientes" class="bg-gray-700 hover:bg-gray-600 px-3 py-1 rounded text-sm">Volver</a>
+        <a href="/director/expedientes" class="bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded text-sm flex items-center gap-2 transition">
+            <span class="material-icons text-sm">arrow_back</span> Volver al Directorio
+        </a>
     </nav>
 
-    <div class="bg-white shadow p-6 mb-6">
-        <div class="container mx-auto flex items-center gap-6">
-            <div class="h-20 w-20 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 font-bold text-3xl">
+    <div class="bg-white shadow-md p-6 mb-6">
+        <div class="container mx-auto flex flex-col md:flex-row items-center gap-6">
+            <div class="h-20 w-20 bg-blue-100 rounded-full flex items-center justify-center text-blue-700 font-bold text-3xl border-4 border-white shadow-sm">
                 {{ alumno.nombre_completo[:1] }}
             </div>
-            <div>
+            
+            <div class="text-center md:text-left flex-1">
                 <h1 class="text-2xl font-bold text-gray-800">{{ alumno.nombre_completo }}</h1>
-                <p class="text-gray-500">CURP: {{ alumno.curp }} | Grado: {{ alumno.grado }}° "{{ alumno.grupo }}"</p>
-                <div class="mt-2 flex gap-2">
-                    <span class="bg-green-100 text-green-800 text-xs px-2 py-1 rounded font-bold">ACTIVO</span>
-                    <span class="bg-gray-100 text-gray-800 text-xs px-2 py-1 rounded">ID: {{ alumno.id_alumno }}</span>
+                
+                <div class="flex flex-col md:flex-row gap-3 md:gap-6 text-gray-500 text-sm mt-2 justify-center md:justify-start">
+                    <span class="flex items-center gap-1 justify-center md:justify-start">
+                        <span class="material-icons text-xs">fingerprint</span> 
+                        <strong>CURP:</strong> {{ alumno.curp }}
+                    </span>
+                    <span class="flex items-center gap-1 justify-center md:justify-start">
+                        <span class="material-icons text-xs">school</span> 
+                        <strong>Grupo:</strong> {{ alumno.grado }}° "{{ alumno.grupo }}"
+                    </span>
+                    <span class="flex items-center gap-1 justify-center md:justify-start">
+                        <span class="material-icons text-xs text-green-600">phone</span> 
+                        <strong>Tel:</strong> {{ alumno.telefono_tutor or 'No registrado' }}
+                    </span>
                 </div>
             </div>
         </div>
     </div>
 
-    <div class="container mx-auto px-6">
+    <div class="container mx-auto px-4 md:px-8 pb-10">
         
-        <div class="flex border-b border-gray-300 mb-6">
-            <button @click="tab = 'documentos'" 
-                    :class="tab === 'documentos' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'"
-                    class="py-2 px-4 border-b-2 font-medium transition flex items-center gap-2">
+        <div class="flex border-b border-gray-300 mb-6 bg-white rounded-t-lg shadow-sm overflow-x-auto">
+            <button onclick="cambiarTab('datos')" id="btn-datos" class="tab-btn flex-1 py-4 px-6 border-b-4 border-transparent font-bold transition flex gap-2 items-center justify-center text-gray-500 hover:text-gray-700 whitespace-nowrap">
+                <span class="material-icons text-sm">edit_note</span> Datos Generales
+            </button>
+            <button onclick="cambiarTab('documentos')" id="btn-documentos" class="tab-btn flex-1 py-4 px-6 border-b-4 border-transparent font-bold transition flex gap-2 items-center justify-center text-gray-500 hover:text-gray-700 whitespace-nowrap">
                 <span class="material-icons text-sm">inventory_2</span> Bóveda Digital
             </button>
-            <button @click="tab = 'tramites'" 
-                    :class="tab === 'tramites' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'"
-                    class="py-2 px-4 border-b-2 font-medium transition flex items-center gap-2">
-                <span class="material-icons text-sm">history_edu</span> Historial y Trámites
+            <button onclick="cambiarTab('tramites')" id="btn-tramites" class="tab-btn flex-1 py-4 px-6 border-b-4 border-transparent font-bold transition flex gap-2 items-center justify-center text-gray-500 hover:text-gray-700 whitespace-nowrap">
+                <span class="material-icons text-sm">print</span> Trámites y Constancias
             </button>
         </div>
 
-        <div x-show="tab === 'documentos'" class="grid grid-cols-1 md:grid-cols-3 gap-8">
-            
-            <div class="bg-white p-6 rounded-xl shadow-lg border-t-4 border-blue-500 h-fit">
-                <h3 class="font-bold text-gray-700 mb-4 flex items-center gap-2">
-                    <span class="material-icons">upload_file</span> Nuevo Documento
-                </h3>
+        <div id="tab-datos" class="tab-content">
+            <div class="bg-white p-8 rounded-b-xl rounded-tr-xl shadow-lg border-t-4 border-gray-600">
                 
-                <form action="/director/subir-documento-alumno" method="post" enctype="multipart/form-data">
+                <div class="flex justify-between items-center mb-6 border-b pb-4">
+                    <h3 class="text-xl font-bold text-gray-800">Información del Estudiante</h3>
+                    <span class="text-xs text-green-600 bg-green-100 px-2 py-1 rounded font-bold uppercase">Edición Habilitada</span>
+                </div>
+                
+                <form action="/director/actualizar-datos-alumno" method="post">
                     <input type="hidden" name="id_alumno" value="{{ alumno.id_alumno }}">
                     
-                    <div class="mb-4">
-                        <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Categoría</label>
-                        <select name="categoria" class="w-full border p-2 rounded bg-gray-50 cursor-pointer">
-                            <option value="IDENTIDAD">📂 Identidad (Acta, CURP)</option>
-                            <option value="MEDICO">🩺 Médico (Certificados)</option>
-                            <option value="ACADEMICO">🎓 Académico (Boletas)</option>
-                            <option value="LEGAL">⚖️ Legal / Conducta</option>
-                        </select>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                        <div class="md:col-span-2">
+                            <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Nombre Completo</label>
+                            <input type="text" name="nombre" value="{{ alumno.nombre_completo }}" class="w-full border border-gray-300 p-2.5 rounded focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition font-bold text-gray-700">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-gray-500 uppercase mb-1">CURP</label>
+                            <input type="text" name="curp" value="{{ alumno.curp }}" class="w-full border border-gray-300 p-2.5 rounded bg-gray-100 text-gray-500 cursor-not-allowed" readonly title="La CURP no se edita por seguridad">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Nombre del Tutor Legal</label>
+                            <input type="text" name="contacto" value="{{ alumno.nombre_contacto or '' }}" class="w-full border border-gray-300 p-2.5 rounded focus:border-blue-500 transition">
+                        </div>
                     </div>
 
-                    <div class="mb-6">
-                        <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Archivo (PDF/IMG)</label>
-                        <input type="file" name="archivo" required class="w-full text-sm">
+                    <h4 class="text-sm font-bold text-gray-500 uppercase mb-3 border-b pb-1 flex items-center gap-1">
+                        <span class="material-icons text-sm">contact_phone</span> Directorio de Contacto
+                    </h4>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                        <div>
+                            <label class="block text-xs font-bold text-gray-700 mb-1">Tel. Tutor (Principal)</label>
+                            <input type="tel" name="tel_tutor" value="{{ alumno.telefono_tutor or '' }}" placeholder="Obligatorio" class="w-full border-2 border-blue-100 p-2 rounded focus:border-blue-500 focus:outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-red-600 mb-1">Tel. Emergencia</label>
+                            <input type="tel" name="tel_emergencia" value="{{ alumno.telefono_emergencia or '' }}" placeholder="Obligatorio" class="w-full border-2 border-red-100 p-2 rounded focus:border-red-500 focus:outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-gray-500 mb-1">Tel. Madre (Opcional)</label>
+                            <input type="tel" name="tel_madre" value="{{ alumno.telefono_madre or '' }}" class="w-full border border-gray-300 p-2 rounded focus:border-blue-500">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-gray-500 mb-1">Tel. Padre (Opcional)</label>
+                            <input type="tel" name="tel_padre" value="{{ alumno.telefono_padre or '' }}" class="w-full border border-gray-300 p-2 rounded focus:border-blue-500">
+                        </div>
                     </div>
 
-                    <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 rounded shadow transition">
-                        Guardar en Bóveda
-                    </button>
+                    <div class="text-right pt-4 border-t border-gray-100">
+                        <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 px-8 rounded shadow transition transform hover:-translate-y-0.5 flex items-center gap-2 ml-auto">
+                            <span class="material-icons text-sm">save</span> Guardar Cambios
+                        </button>
+                    </div>
                 </form>
-            </div>
-
-            <div class="md:col-span-2 bg-white rounded-xl shadow-lg overflow-hidden">
-                <table class="w-full text-left border-collapse">
-                    <thead class="bg-gray-100 text-gray-600 text-xs uppercase">
-                        <tr>
-                            <th class="p-4">Categoría</th>
-                            <th class="p-4">Documento</th>
-                            <th class="p-4">Estado</th>
-                            <th class="p-4 text-right">Acciones</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-gray-100">
-                        {% for doc in documentos %}
-                        <tr class="hover:bg-gray-50 transition">
-                            <td class="p-4">
-                                <span class="bg-blue-50 text-blue-700 px-2 py-1 rounded text-xs font-bold">{{ doc.categoria }}</span>
-                            </td>
-                            <td class="p-4 flex items-center gap-2">
-                                <span class="material-icons text-red-500 text-sm">picture_as_pdf</span>
-                                <span class="text-sm font-medium text-gray-700 truncate max-w-xs">{{ doc.nombre_archivo }}</span>
-                            </td>
-                            <td class="p-4">
-                                {% if doc.estado == 'VALIDADO' %}
-                                    <span class="text-green-600 flex items-center gap-1 text-xs font-bold">
-                                        <span class="material-icons text-sm">verified</span> Validado
-                                    </span>
-                                {% else %}
-                                    <span class="text-yellow-600 flex items-center gap-1 text-xs font-bold">
-                                        <span class="material-icons text-sm">pending</span> Pendiente
-                                    </span>
-                                {% endif %}
-                            </td>
-                            <td class="p-4 text-right flex justify-end gap-2">
-                                <a href="/{{ doc.ruta_archivo }}" target="_blank" class="text-gray-500 hover:text-blue-600" title="Ver">
-                                    <span class="material-icons text-lg">visibility</span>
-                                </a>
-                                {% if doc.estado == 'PENDIENTE' %}
-                                <a href="/director/validar-doc/{{ doc.id_documento }}/{{ alumno.id_alumno }}" class="text-gray-500 hover:text-green-600" title="Validar">
-                                    <span class="material-icons text-lg">check_circle</span>
-                                </a>
-                                {% endif %}
-                                <a href="/director/borrar-doc/{{ doc.id_documento }}/{{ alumno.id_alumno }}" class="text-gray-500 hover:text-red-600" title="Borrar" onclick="return confirm('¿Seguro?')">
-                                    <span class="material-icons text-lg">delete</span>
-                                </a>
-                            </td>
-                        </tr>
-                        {% else %}
-                        <tr>
-                            <td colspan="4" class="p-8 text-center text-gray-400">
-                                La bóveda está vacía. Sube documentos a la izquierda.
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
             </div>
         </div>
 
-        <div x-show="tab === 'tramites'">
-            <div class="bg-white rounded-xl shadow-lg p-6">
-                <div class="flex justify-between items-center mb-6">
-                    <h3 class="font-bold text-gray-800 text-lg">Historial de Documentos Emitidos</h3>
-                    
-                    <a href="/director/expedientes" class="bg-green-600 text-white px-4 py-2 rounded text-sm font-bold shadow hover:bg-green-700">
-                        + Nuevo Trámite
-                    </a>
+        <div id="tab-documentos" class="tab-content">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                
+                <div class="bg-white p-6 rounded-xl shadow-lg h-fit border-t-4 border-blue-500">
+                    <h3 class="font-bold text-gray-700 mb-4 flex items-center gap-2">
+                        <span class="material-icons text-blue-500">cloud_upload</span> Subir Documento
+                    </h3>
+                    <form action="/director/subir-documento-alumno" method="post" enctype="multipart/form-data">
+                        <input type="hidden" name="id_alumno" value="{{ alumno.id_alumno }}">
+                        
+                        <div class="mb-4">
+                            <label class="block text-xs font-bold text-gray-400 uppercase mb-1">Tipo de Documento</label>
+                            <select name="categoria" class="w-full border p-2 rounded bg-gray-50 cursor-pointer text-sm">
+                                <option value="IDENTIDAD">📂 Identidad (Acta, INE)</option>
+                                <option value="MEDICO">🩺 Médico (Certificados)</option>
+                                <option value="ACADEMICO">🎓 Académico (Boletas)</option>
+                                <option value="LEGAL">⚖️ Legal / Conducta</option>
+                            </select>
+                        </div>
+                        
+                        <div class="mb-6">
+                            <label class="block text-xs font-bold text-gray-400 uppercase mb-1">Seleccionar Archivo</label>
+                            <input type="file" name="archivo" required class="w-full text-sm border p-1 rounded bg-gray-50">
+                        </div>
+                        
+                        <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 rounded shadow transition">
+                            Guardar en Bóveda
+                        </button>
+                    </form>
                 </div>
 
-                <div class="overflow-x-auto">
-                    <table class="w-full text-left">
-                        <thead>
-                            <tr class="border-b-2 border-gray-200 text-gray-500 text-sm">
-                                <th class="pb-3">Trámite / Actividad</th>
-                                <th class="pb-3">Emitido por</th>
-                                <th class="pb-3">Fecha y Hora</th>
-                            </tr>
+                <div class="lg:col-span-2 bg-white rounded-xl shadow-lg overflow-hidden border-t-4 border-gray-200">
+                    <div class="bg-gray-50 p-4 border-b border-gray-200">
+                        <h3 class="font-bold text-gray-700">Archivos Resguardados</h3>
+                    </div>
+                    <table class="w-full text-left border-collapse">
+                        <thead class="bg-white text-gray-500 text-xs uppercase border-b">
+                            <tr><th class="p-4">Categoría</th><th class="p-4">Nombre Archivo</th><th class="p-4 text-right">Acción</th></tr>
                         </thead>
-                        <tbody class="divide-y">
-                            {% for log in historial %}
-                            <tr class="group hover:bg-gray-50">
-                                <td class="py-3 font-bold text-gray-700">{{ log.tramite }}</td>
-                                <td class="py-3 text-gray-500 text-sm">{{ log.usuario_responsable }}</td>
-                                <td class="py-3 text-gray-400 text-xs font-mono">{{ log.fecha }}</td>
+                        <tbody class="divide-y divide-gray-100">
+                            {% for doc in documentos %}
+                            <tr class="hover:bg-blue-50 transition group">
+                                <td class="p-4">
+                                    <span class="bg-blue-100 text-blue-800 text-[10px] px-2 py-1 rounded font-bold uppercase">{{ doc.categoria }}</span>
+                                </td>
+                                <td class="p-4 text-sm font-medium text-gray-700 flex items-center gap-2">
+                                    <span class="material-icons text-red-500 text-sm">picture_as_pdf</span>
+                                    {{ doc.nombre_archivo }}
+                                </td>
+                                <td class="p-4 text-right">
+                                    <a href="/{{ doc.ruta_archivo }}" target="_blank" class="bg-white border border-gray-300 text-gray-600 hover:text-blue-600 hover:border-blue-400 px-3 py-1 rounded text-xs font-bold transition shadow-sm">
+                                        VER
+                                    </a>
+                                </td>
                             </tr>
                             {% else %}
                             <tr>
-                                <td colspan="3" class="py-8 text-center text-gray-400 italic">
-                                    No hay actividad registrada en este expediente.
+                                <td colspan="3" class="p-10 text-center text-gray-400 flex flex-col items-center">
+                                    <span class="material-icons text-4xl mb-2 text-gray-300">folder_open</span>
+                                    <p>La bóveda está vacía.</p>
                                 </td>
                             </tr>
                             {% endfor %}
@@ -175,7 +194,132 @@
             </div>
         </div>
 
+        <div id="tab-tramites" class="tab-content">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                
+                <div class="bg-white p-6 rounded-xl shadow-lg border-t-4 border-purple-500 h-fit">
+                    <h3 class="font-bold text-gray-800 text-lg mb-4 flex items-center gap-2 border-b pb-3">
+                        <span class="material-icons text-purple-600">print</span> Generar Documento Oficial
+                    </h3>
+                    
+                    <form action="/director/imprimir-documento-avanzado" method="POST" target="_blank" id="formGenerador">
+                        <input type="hidden" name="id_alumno" value="{{ alumno.id_alumno }}">
+                        
+                        <div class="mb-4">
+                            <label class="block text-xs font-bold text-gray-500 uppercase mb-2">Seleccione Trámite:</label>
+                            <select id="selectTipoDoc" name="tipo_documento" onchange="toggleNotas()" class="w-full border border-gray-300 p-3 rounded-lg mb-2 bg-white cursor-pointer focus:border-purple-500 focus:ring-1 focus:ring-purple-500 outline-none transition">
+                                <option value="CONSTANCIA">Constancia de Estudios (Simple)</option>
+                                <option value="KARDEX">Certificado de Promedios (Manual)</option>
+                            </select>
+                        </div>
+
+                        <div id="camposKardex" class="hidden bg-purple-50 p-4 rounded-lg mb-6 border border-purple-100 animate-pulse-once">
+                            <p class="text-xs text-purple-700 font-bold mb-3 uppercase">Ingrese Promedios por Grado:</p>
+                            <div class="grid grid-cols-3 gap-3 mb-3">
+                                <div>
+                                    <label class="block text-[10px] text-gray-500 text-center mb-1">1° Año</label>
+                                    <input type="number" step="0.1" name="nota1" class="border p-2 rounded text-center text-sm w-full font-bold">
+                                </div>
+                                <div>
+                                    <label class="block text-[10px] text-gray-500 text-center mb-1">2° Año</label>
+                                    <input type="number" step="0.1" name="nota2" class="border p-2 rounded text-center text-sm w-full font-bold">
+                                </div>
+                                <div>
+                                    <label class="block text-[10px] text-gray-500 text-center mb-1">3° Año</label>
+                                    <input type="number" step="0.1" name="nota3" class="border p-2 rounded text-center text-sm w-full font-bold">
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-[10px] text-gray-500 mb-1">Promedio Final (Texto)</label>
+                                <input type="text" name="promedio_final" placeholder="Ej. 9.5" class="w-full border p-2 rounded text-center font-bold text-purple-900 bg-white">
+                            </div>
+                        </div>
+
+                        <div class="flex gap-3">
+                            <button type="reset" class="flex-1 bg-gray-200 text-gray-600 font-bold py-3 rounded-lg shadow-sm hover:bg-gray-300 transition text-sm">
+                                Limpiar
+                            </button>
+                            <button type="submit" class="flex-[2] bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 rounded-lg shadow-md transition flex justify-center items-center gap-2 text-sm transform hover:-translate-y-0.5">
+                                <span class="material-icons text-sm">file_download</span> Generar PDF
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <div class="bg-white p-6 rounded-xl shadow-lg border-t-4 border-gray-300 h-fit">
+                    <h3 class="font-bold text-gray-600 text-sm uppercase mb-4 border-b pb-3 flex items-center gap-2">
+                        <span class="material-icons text-sm">history</span> Bitácora de Emisiones
+                    </h3>
+                    <div class="overflow-y-auto max-h-[300px] pr-2">
+                        <table class="w-full text-left">
+                            <tbody class="divide-y divide-gray-100">
+                                {% for log in historial %}
+                                <tr class="hover:bg-gray-50 transition">
+                                    <td class="py-3">
+                                        <p class="font-bold text-gray-700 text-sm">{{ log.tramite }}</p>
+                                        <p class="text-gray-400 text-[10px] uppercase font-bold mt-0.5">{{ log.fecha }}</p>
+                                    </td>
+                                    <td class="py-3 text-right">
+                                        <span class="bg-gray-100 text-gray-500 text-[10px] px-2 py-1 rounded-full border">
+                                            {{ log.usuario_responsable }}
+                                        </span>
+                                    </td>
+                                </tr>
+                                {% else %}
+                                <tr>
+                                    <td colspan="2" class="py-8 text-center text-gray-400 text-sm flex flex-col items-center">
+                                        <span class="material-icons text-gray-300 text-3xl mb-1">history_toggle_off</span>
+                                        No hay historial reciente.
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
     </div>
+
+    <script>
+        // 1. MANEJO DE PESTAÑAS
+        function cambiarTab(nombreTab) {
+            // Ocultar contenidos
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            // Desactivar botones
+            document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+            
+            // Activar el elegido
+            document.getElementById('tab-' + nombreTab).classList.add('active');
+            document.getElementById('btn-' + nombreTab).classList.add('active');
+            
+            // Actualizar URL sin recargar (para que si da F5 se quede en la pestaña)
+            const url = new URL(window.location);
+            url.searchParams.set('tab', nombreTab);
+            window.history.replaceState({}, '', url);
+        }
+
+        // 2. INICIALIZAR PESTAÑA DESDE URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const tabInicial = urlParams.get('tab') || 'datos'; // Si no hay, va a 'datos'
+        cambiarTab(tabInicial);
+
+        // 3. MOSTRAR/OCULTAR CAMPOS KARDEX
+        function toggleNotas() {
+            const select = document.getElementById('selectTipoDoc');
+            const caja = document.getElementById('camposKardex');
+            
+            if (select.value === 'KARDEX') {
+                caja.classList.remove('hidden');
+                caja.classList.add('block'); // Aseguramos que se vea
+            } else {
+                caja.classList.add('hidden');
+                caja.classList.remove('block');
+            }
+        }
+    </script>
 
 </body>
 </html>

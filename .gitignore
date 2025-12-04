@@ -4,6 +4,7 @@ __pycache__/
 
 # Carpeta de archivos subidos (No la queremos en la nube, es local)
 uploads/
+pasos de subir archivos a github.txt/
 
 # Entornos virtuales (Si usas alguno)
 venv/
